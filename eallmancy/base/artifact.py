@@ -23,6 +23,12 @@ class Artifact:
         self.evaluation = evald
         return self
     
+    @property
+    def fitness(self):
+        if self.evaluation is None:
+            raise Exception("cannot reference `fitness` of unevaluated artifact")
+        return self.evaluation.fitness
+    
     def __str__(self):
         return f"Artifact {self.trace_id}\nEvaluation: {self.evaluation if self.evaluation is not None else 'None'}"
 

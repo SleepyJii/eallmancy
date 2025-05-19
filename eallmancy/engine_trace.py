@@ -49,12 +49,12 @@ class EngineTrace:
             input_arts=parents,
             output_art=arte,
         )
-# EVOLVE START
+
     def save(self, path):
         self.lock = None # lock is unpickleable
         with open(path, 'wb') as f:
             pk.dump(self, f)
-# EVOLVE END
+
     @staticmethod
     def load(path):
         with open(path, 'rb') as f:

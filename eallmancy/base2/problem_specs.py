@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from eallmancy.base.problem_spec import ProblemSpec
+from eallmancy.base2.git_disk_utils import find_evolve_marked_file_sections, find_evolve_marked_files
 
 
 
@@ -31,6 +32,10 @@ class EvolveGitSpec:#(ProblemSpec):
         self.description = description
         self.git_path = git_path
         self.eval_script_path = eval_script_path
+        
+        evolve_fps = find_evolve_marked_files(git_path)
+        self.section_templates = find_evolve_marked_file_sections(evolve_fps[0])
+        self.template = '\n\n'.join(self.section_templates)
 
     def validate_paths(self):
         if not Path(self.git_path).exists():
@@ -43,10 +48,9 @@ class EvolveGitSpec:#(ProblemSpec):
     # def template(self, v: str) -> None:
     #     pass
 
-    @property
-    def template(self) -> str:
-        # function signature template for LLM to implement
-        return ''
+    # @property
+    # def template(self) -> str:
+    #     return self._template
 
     # @entrypoint.setter
     # def entrypoint(self, v: str) -> None:

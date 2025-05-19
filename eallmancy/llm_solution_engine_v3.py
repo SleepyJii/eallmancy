@@ -19,7 +19,7 @@ from eallmancy.engine_trace import EngineTrace
 from threading import Lock, Thread
 
 from eallmancy.base2.problem_specs import EvolveGitSpec
-from eallmancy.base2.multi_part_solutions import MultiPartSolution, DiffSolution
+from eallmancy.base2.multi_part_solutions import MultiPartSolution, DiffSolution, DummyMultiPartSolution
 from eallmancy.workers.evaluation_worker import PythonEvaluateSolutionWorker, GitEvaluateSolutionWorker
 
 
@@ -126,6 +126,8 @@ class EngineV3:
         )
 
         if issubclass(arte_class, MultiPartSolution):
+            if issubclass(arte_class, DiffSolution) and artifact.parent is None:
+                artifact: DiffSolution = artifact.set_parent(DummyMultiPartSolution(self._problem_spec.section_templates))
             evaluation = self._worker_pool.evaluate_solution(artifact)
             artifact = artifact.set_evaluation(evaluation)
 
