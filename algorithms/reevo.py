@@ -6,9 +6,9 @@
 
 import os
 
-from reallm.llm_solution_engine_v2 import EngineV2
+from eallmancy.llm_solution_engine_v2 import EngineV2
 
-from reallm import Artifact, Solution, ProblemSpec
+from eallmancy import Artifact, Solution, ProblemSpec
 from typing import List, Optional
 import os
 import re
@@ -189,7 +189,7 @@ if __name__=="__main__":
 
     import random
 
-    from reallm import Evaluation
+    from eallmancy import Evaluation
 
     def evaluate_pseudorandom(func):
         randseed = random.randint(1,23489)

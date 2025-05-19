@@ -1,7 +1,7 @@
 
 from llm4ad.base import Evaluation as LLM4ADEvaluation
 
-from reallm import ProblemSpec, evaluator as reallm_evaluator_func
+from eallmancy import ProblemSpec, evaluator as reallm_evaluator_func
 import numpy as np
 import typing
 from typing import Callable, Any, Dict

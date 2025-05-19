@@ -27,7 +27,7 @@ snapshot_download(
 )
 
 from algorithms import funsearch, eoh, reevo
-from reallm import ProblemSpec, Evaluation
+from eallmancy import ProblemSpec, Evaluation
 import re
 
 for task in TASK_LIST:

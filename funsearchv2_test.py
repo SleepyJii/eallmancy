@@ -18,7 +18,7 @@ tasks = dict(
 from algorithms.funsearch import funsearch, engine as fs_engine
 import re
 
-from reallm import ProblemSpec, evaluator as reallm_evaluator_func
+from eallmancy import ProblemSpec, evaluator as reallm_evaluator_func
 
 probresults = dict()
 for task_name, (task_fitness_evaluator, task_prompts) in tasks.items():

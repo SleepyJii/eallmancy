@@ -2,9 +2,9 @@
 ## PROMPT-TO-SOLUTION ENGINE
 ### uses api information and problem details for easy prompt evaluation
 
-from reallm.llm_solution_engine_v2 import EngineV2
+from eallmancy.llm_solution_engine_v2 import EngineV2
 
-from reallm import Solution, ProblemSpec
+from eallmancy import Solution, ProblemSpec
 import os
 import re
 
@@ -196,7 +196,7 @@ if __name__=="__main__":
 
     import random
 
-    from reallm import Evaluation
+    from eallmancy import Evaluation
 
     def evaluate_pseudorandom(func):
         randseed = random.randint(1,23489)

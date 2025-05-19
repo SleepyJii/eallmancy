@@ -6,7 +6,7 @@ from reevo.problems.mkp_aco.eval_jk import MKPACOEvaluator, promptdetails as MKP
 from reevo.problems.op_aco.eval_jk import OPACOEvaluator, promptdetails as OPACO_prompts
 from reevo.problems.tsp_aco.eval_jk import TSPACOEvaluator, promptdetails as TSPACO_prompts
 
-from reallm import ProblemSpec, evaluator as reallm_evaluator_func
+from eallmancy import ProblemSpec, evaluator as reallm_evaluator_func
 from .converters import _swap_max_min
 
 

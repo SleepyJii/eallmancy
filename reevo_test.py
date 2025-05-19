@@ -17,7 +17,7 @@ tasks = dict(
 
 
 from algorithms.eoh import eoh, engine as eoh_engine
-from reallm import ProblemSpec, Evaluation
+from eallmancy import ProblemSpec, Evaluation
 import re
 
 

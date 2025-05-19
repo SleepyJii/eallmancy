@@ -8,7 +8,7 @@ from llm4ad.task.optimization.jssp_construct import JSSPEvaluation
 from llm4ad.task.optimization.cvrp_construct import CVRPEvaluation
 from llm4ad.task.optimization.knapsack_construct import KnapsackEvaluation
 
-from reallm import ProblemSpec, evaluator as reallm_evaluator_func
+from eallmancy import ProblemSpec, evaluator as reallm_evaluator_func
 
 
 class OBPProblemSpec(ProblemSpec):

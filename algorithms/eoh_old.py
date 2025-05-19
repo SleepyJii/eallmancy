@@ -3,7 +3,7 @@
 ### uses api information and problem details for easy prompt evaluation
 
 
-from reallm import LLMSolutionEngine, Solution, ProblemSpec
+from eallmancy import LLMSolutionEngine, Solution, ProblemSpec
 import os
 
 
@@ -128,7 +128,7 @@ if __name__=="__main__":
 
     import random
 
-    from reallm import Evaluation
+    from eallmancy import Evaluation
 
     def evaluate_pseudorandom(func):
         randseed = random.randint(1,23489)

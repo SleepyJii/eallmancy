@@ -3,7 +3,7 @@
 ## PROMPT-TO-SOLUTION ENGINE
 ### uses api information and problem details for easy prompt evaluation
 
-from reallm import LLMSolutionEngine, Solution, ProblemSpec
+from eallmancy import LLMSolutionEngine, Solution, ProblemSpec
 import os
 
 
@@ -163,7 +163,7 @@ if __name__=="__main__":
 
     import random
 
-    from reallm import evaluator
+    from eallmancy import evaluator
     @evaluator
     def evaluate_pseudorandom(heuristic):
         randseed = random.randint(1,23489)

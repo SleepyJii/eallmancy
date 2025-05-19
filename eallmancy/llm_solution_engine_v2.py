@@ -10,12 +10,12 @@ import networkx as nx
 import itertools
 
 from llm4ad.base.code import Program
-from reallm.base.artifact import Artifact
-from reallm.base.problem_spec import ProblemSpec
-from reallm.base.solution import Solution
-from reallm.base.reflection import Reflection
-from reallm.base.evaluation import Evaluation
-from reallm.engine_trace import EngineTrace
+from eallmancy.base.artifact import Artifact
+from eallmancy.base.problem_spec import ProblemSpec
+from eallmancy.base.solution import Solution
+from eallmancy.base.reflection import Reflection
+from eallmancy.base.evaluation import Evaluation
+from eallmancy.engine_trace import EngineTrace
 
 from threading import Lock, Thread
 
@@ -77,43 +77,17 @@ class EngineV2:
         self.set_problem = _TmpProblemSpecContext(self)
         self._id_generator = itertools.count()
 
-        self.trace: Optional[EngineTrace] = None # EngineTrace()
-        # self.tracing=tracing
-        # self.trace_graph = None
-        # self.trace_list = None
-        # self.trace_lock = Lock()
+        self.trace: Optional[EngineTrace] = None
     
     def is_ready(self):
         return self._sampler is not None and self._problem_spec is not None
 
     def start_trace(self):
-        # TODO: change this to just instantiate a EngineTrace object
-        # self.tracing=True
-        # self.trace_graph = nx.DiGraph()
-        # self.trace_list = []
         if self.trace is None:
             self.trace = EngineTrace()
         return self
     
-    # def _register_trace(self, input_arts, output_art, prompt_builder_name=''):
-    #     with self.trace_lock:
-    #         self.trace_list.append(output_art)
-    #         self.trace_graph.add_node(
-    #             output_art.trace_id,
-    #             label=f'{prompt_builder_name or "OP"}-{output_art.trace_id}',
-    #             artifact=output_art
-    #         )
-    #         for inp_art in input_arts:
-    #             if inp_art is not None:
-    #                 self.trace_graph.add_edge(inp_art.trace_id, output_art.trace_id)
-        
     def dump_trace(self):
-        # TODO: change this to just drop out the EngineTrace object
-        # self.tracing=False
-        # tracegraph = self.trace_graph
-        # tracelist = self.trace_list
-        # self.trace_graph = None
-        # self.trace_list = None
         tr = self.trace
         self.trace = None
         return tr
@@ -122,15 +96,6 @@ class EngineV2:
     def register_artifact(self, arte: Artifact, parents: List[Artifact] = []):
         if self.trace is not None:
             self.trace._register_trace(parents, arte)
-
-        # if self.tracing:
-        #     if arte.trace_id is not None:
-        #         raise Exception('attempted to register Artifact which already had id {arte.trace_id}')
-        #     arte.set_id(next(self._id_generator))
-        #     self._register_trace(
-        #         input_arts=parents,
-        #         output_art=arte,
-        #     )
 
 
     def generate_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
@@ -168,11 +133,6 @@ class EngineV2:
         )
 
         self.register_artifact(artifact, parents)
-        # if self.tracing:
-        #     self._register_trace(
-        #         input_arts=parents,
-        #         output_art=artifact,
-        #     )
 
         return artifact
 

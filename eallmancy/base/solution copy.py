@@ -3,8 +3,8 @@ from typing import Optional
 
 from llm4ad.base.code import TextFunctionProgramConverter, Program, Function
 
-from reallm.base.evaluation import Evaluation
-from reallm.base.artifact import Artifact
+from eallmancy.base.evaluation import Evaluation
+from eallmancy.base.artifact import Artifact
 
 
 class Solution(Artifact):

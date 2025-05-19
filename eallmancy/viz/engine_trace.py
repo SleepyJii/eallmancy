@@ -6,7 +6,7 @@ import matplotlib.patches as mpatches
 from matplotlib.pyplot import get_cmap
 import matplotlib.colors as mcolors
 
-from reallm.engine_trace import EngineTrace
+from eallmancy.engine_trace import EngineTrace
 
 
 def _plot_graph(tg, node_colors=None):

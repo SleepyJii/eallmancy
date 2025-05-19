@@ -1,7 +1,7 @@
 
 
 
-from reallm.base.artifact import Artifact
+from eallmancy.base.artifact import Artifact
 
 
 class Reflection(Artifact):

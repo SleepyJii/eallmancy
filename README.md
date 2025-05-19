@@ -1,6 +1,4 @@
 
-## Reconfigurable Evolutionary Algorithms for LLMs (REALLM)
+## EALLMancy
 
-For now this is an attempt at modularizing the internal workings of common EA-LLM code generation approaches.
-
-
+Wherein we pierce the veil, with EA+LLMs
