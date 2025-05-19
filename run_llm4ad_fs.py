@@ -25,20 +25,22 @@ from llm4ad.method.funsearch import FunSearch
 from llm4ad.tools.profiler import ProfilerBase
 import os
 
-from reallm_problems.reevo import TSPACOProblemSpec
+from reallm_problems.reevo import TSPACOProblemSpec, BPPoffACOProblemSpec, CVRPACOProblemSpec, MKPACOProblemSpec, OPACOProblemSpec
 from reallm_problems.converters import reallm_to_llm4ad
 
-xx = TSPACOProblemSpec()
-xx.template = """
-import numpy as np
-def heuristic(distance_matrix: np.ndarray) -> np.ndarray:
-    return distance_matrix
-"""
+#xx.template = f"""
+#import numpy as np
+#{xx.template}
+#"""
 ALL_TASKS = dict(
-    TSPACO=reallm_to_llm4ad(xx)
-    #OBP=OBPEvaluation(),
-    #TSP=TSPEvaluation(),
-    #JSSP=JSSPEvaluation()
+    # OBP=(OBPEvaluation()),
+    # TSP=(TSPEvaluation()),
+    # JSSP=(JSSPEvaluation()),
+     TSPACO=reallm_to_llm4ad(TSPACOProblemSpec()), # WORKING
+     BPPoffACO=reallm_to_llm4ad(BPPoffACOProblemSpec()), # WORKING
+     CVRPACO=reallm_to_llm4ad(CVRPACOProblemSpec()), # WORKING
+     MKPACO=reallm_to_llm4ad(MKPACOProblemSpec()), # WORKING
+     OPACO=reallm_to_llm4ad(OPACOProblemSpec()), # WORKING
 )
 
 
@@ -74,9 +76,9 @@ for _ in range(n_runthroughs):
         with PathContext('/root/eallm'):
             run_llm4ad_fs(
                 evv,
-                max_sample_nums=85,
-                num_samplers=1,
-                num_evaluators=1,
+                max_sample_nums=50,
+                num_samplers=2,
+                num_evaluators=2,
                 debug_mode=True
             )
 
