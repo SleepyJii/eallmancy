@@ -3,9 +3,9 @@ from typing import Optional
 import re
 from llm4ad.base.code import TextFunctionProgramConverter, Program, Function
 
-from eallmancy.base.evaluation import Evaluation
-from eallmancy.base.artifact import Artifact
-from eallmancy.base2.multi_part_solutions import MultiPartSolution
+from eallmancy.evaluation.evaluation import Evaluation
+from eallmancy.artifacts.artifact import Artifact
+from eallmancy.artifacts.multi_part_solutions import MultiPartSolution
 
 class SinglePartSolution(MultiPartSolution):
     def __init__(self, response: str, **kwargs):

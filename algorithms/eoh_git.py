@@ -2,11 +2,11 @@
 ## PROMPT-TO-SOLUTION ENGINE
 ### uses api information and problem details for easy prompt evaluation
 
-from eallmancy.llm_solution_engine_v3 import EngineV3
+from eallmancy.engine.llm_solution_engine_v3 import EngineV3
 from eallmancy import Artifact
 
 from eallmancy import MultiPartSolution, DiffSolution, ProblemSpec
-from eallmancy.base2.multi_part_solutions import DummyMultiPartSolution
+from eallmancy.artifacts.multi_part_solutions import DummyMultiPartSolution
 import os
 import re
 
@@ -68,7 +68,7 @@ def i1_solution():
 2. Next, improve on the following sections of code:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
 Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
-Do not give additional explanations.'''
+Remember to include appropriate indentations in both SEARCH and REPLACE blocks. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulDiffSolution)
 
 
@@ -106,7 +106,7 @@ Please assist me in creating a new algorithm that has a different form but can b
 2. Next, improve on the following sections of code:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
 Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
-Do not give additional explanations.'''
+Remember to include appropriate indentations in both SEARCH and REPLACE blocks. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulDiffSolution, parents=[parent_soln])
 
 
@@ -119,7 +119,7 @@ Please identify the main algorithm parameters and assist me in creating a new al
 2. Next, improve on the following sections of code:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
 Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
-Do not give additional explanations.'''
+Remember to include appropriate indentations in both SEARCH and REPLACE blocks. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulDiffSolution, parents=[parent_soln])
 
 

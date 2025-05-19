@@ -10,12 +10,11 @@ import networkx as nx
 import itertools
 
 from llm4ad.base.code import Program
-from eallmancy.base.artifact import Artifact
-from eallmancy.base.problem_spec import ProblemSpec
-from eallmancy.base2.single_part_solution import SinglePartSolution
-from eallmancy.base.reflection import Reflection
-from eallmancy.base.evaluation import Evaluation
-from eallmancy.engine_trace import EngineTrace
+from eallmancy.artifacts.artifact import Artifact
+from eallmancy.engine.problem_spec import ProblemSpec
+from eallmancy.artifacts.single_part_solution import SinglePartSolution
+from eallmancy.evaluation.evaluation import Evaluation
+from eallmancy.engine.engine_trace import EngineTrace
 
 from threading import Lock, Thread
 

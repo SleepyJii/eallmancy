@@ -2,7 +2,7 @@
 ## PROMPT-TO-SOLUTION ENGINE
 ### uses api information and problem details for easy prompt evaluation
 
-from eallmancy.llm_solution_engine_v3 import EngineV3
+from eallmancy.engine.llm_solution_engine_v3 import EngineV3
 from eallmancy import Artifact
 
 from eallmancy import SinglePartSolution, ProblemSpec

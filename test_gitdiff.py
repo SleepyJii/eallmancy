@@ -1,8 +1,8 @@
 #!/root/reallm/venv/bin/python
 
-from eallmancy.base2.problem_specs import EvolveGitSpec
-from eallmancy.base2.multi_part_solutions import DiffSolution
-from eallmancy.workers.evaluation_worker import GitEvaluateSolutionWorker
+from eallmancy.engine.problem_specs import EvolveGitSpec
+from eallmancy.artifacts.multi_part_solutions import DiffSolution
+from eallmancy.evaluation.evaluation_worker import GitEvaluateSolutionWorker
 
 
 

@@ -2,8 +2,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from eallmancy.base.problem_spec import ProblemSpec
-from eallmancy.base2.git_disk_utils import find_evolve_marked_file_sections, find_evolve_marked_files
+from eallmancy.engine.problem_spec import ProblemSpec
+from eallmancy.evaluation.git_disk_utils import find_evolve_marked_file_sections, find_evolve_marked_files
 
 
 

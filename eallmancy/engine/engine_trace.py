@@ -2,8 +2,8 @@
 import networkx as nx
 import itertools
 
-from eallmancy.base.artifact import Artifact
-from eallmancy.base.evaluation import Evaluation
+from eallmancy.artifacts.artifact import Artifact
+from eallmancy.evaluation.evaluation import Evaluation
 from typing import Dict, List
 
 from threading import Lock, Thread

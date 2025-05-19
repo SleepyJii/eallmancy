@@ -6,7 +6,7 @@
 
 import os
 
-from eallmancy.llm_solution_engine_v2 import EngineV2
+from eallmancy.engine.llm_solution_engine_v2 import EngineV2
 
 from eallmancy import Artifact, SinglePartSolution, ProblemSpec
 from typing import List, Optional

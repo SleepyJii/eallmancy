@@ -10,17 +10,16 @@ import networkx as nx
 import itertools
 
 from llm4ad.base.code import Program
-from eallmancy.base.artifact import Artifact
-from eallmancy.base.problem_spec import ProblemSpec
-from eallmancy.base2.single_part_solution import SinglePartSolution
-from eallmancy.base.reflection import Reflection
-from eallmancy.base.evaluation import Evaluation
-from eallmancy.engine_trace import EngineTrace
+from eallmancy.artifacts.artifact import Artifact
+from eallmancy.engine.problem_spec import ProblemSpec
+from eallmancy.artifacts.single_part_solution import SinglePartSolution
+from eallmancy.evaluation.evaluation import Evaluation
+from eallmancy.engine.engine_trace import EngineTrace
 from threading import Lock, Thread
 
-from eallmancy.base2.problem_specs import EvolveGitSpec
-from eallmancy.base2.multi_part_solutions import MultiPartSolution, DiffSolution, DummyMultiPartSolution
-from eallmancy.workers.evaluation_worker import PythonEvaluateSolutionWorker, GitEvaluateSolutionWorker
+from eallmancy.engine.problem_specs import EvolveGitSpec
+from eallmancy.artifacts.multi_part_solutions import MultiPartSolution, DiffSolution, DummyMultiPartSolution
+from eallmancy.evaluation.evaluation_worker import PythonEvaluateSolutionWorker, GitEvaluateSolutionWorker
 
 
 class _EngineSetupContext:
@@ -71,6 +70,11 @@ class EngineV3:
 
         self.trace: Optional[EngineTrace] = None
         self.is_running = False
+        self.hooks = []
+
+    def add_hook(self, hook_func):
+        self.hooks.append(hook_func)
+        return self
 
     def is_ready(self):
         return self._sampler is not None and self._problem_spec is not None
@@ -109,6 +113,8 @@ class EngineV3:
         
         if self.trace is not None:
             self.trace._register_trace(parents, arte)
+            for hook in self.hooks:
+                hook(self.trace)
 
 
     def generate_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):

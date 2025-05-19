@@ -1,4 +1,4 @@
-from eallmancy.base.artifact import Artifact
+from eallmancy.artifacts.artifact import Artifact
 from typing import Optional, List
 import copy
 from dataclasses import dataclass

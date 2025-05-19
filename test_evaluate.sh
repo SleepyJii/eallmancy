@@ -6,7 +6,7 @@ sys.path.append('/root/eallmancy')
 
 
 
-from eallmancy.base.problem_spec import ProblemSpec
+from eallmancy.engine.problem_spec import ProblemSpec
 from problems.reevo import TSPACOProblemSpec, BPPoffACOProblemSpec, CVRPACOProblemSpec, MKPACOProblemSpec, OPACOProblemSpec
 
 def unwrap_reallm(ps):

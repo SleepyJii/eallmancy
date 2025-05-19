@@ -134,7 +134,7 @@ def find_evolve_marked_files(src_path, relpath=False):
 
 def find_evolve_marked_sections(content):
     # detect and catalogue how many to-evolve sections there are in the file
-    original_part_strs = re.findall(r'# EVOLVE START(.*?)\n# EVOLVE END', content, re.DOTALL)
+    original_part_strs = re.findall(r'# EVOLVE START\n?(.*?)\n# EVOLVE END', content, re.DOTALL)
     return original_part_strs
 
 
@@ -149,8 +149,8 @@ def replace_evolve_marked_sections(content, new_sections):
     _idx = 0
     new_content = ''
     for olds, news in zip(original_part_strs, new_sections):
-        wrapped_olds = f'# EVOLVE START{olds}\n# EVOLVE END'
-        wrapped_news = f'# EVOLVE START{news}\n# EVOLVE END'
+        wrapped_olds = f'# EVOLVE START\n{olds}\n# EVOLVE END'
+        wrapped_news = f'# EVOLVE START\n{news}\n# EVOLVE END'
         olds_st_idx = content.find(wrapped_olds)
         olds_en_idx = olds_st_idx + len(wrapped_olds)
         new_content += content[_idx:olds_en_idx].replace(wrapped_olds,wrapped_news)
