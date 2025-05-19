@@ -1,22 +1,26 @@
 
 from typing import Optional
-
+import re
 from llm4ad.base.code import TextFunctionProgramConverter, Program, Function
 
 from eallmancy.base.evaluation import Evaluation
 from eallmancy.base.artifact import Artifact
+from eallmancy.base2.multi_part_solutions import MultiPartSolution
 
-
-class Solution(Artifact):
-    def __init__(self, response: str, program: Optional[Program]=None, **kwargs):
+class SinglePartSolution(MultiPartSolution):
+    def __init__(self, response: str, **kwargs):
         super().__init__(response, **kwargs)
-        self.program = program
+        self.solution_part_strs = re.findall(r'```[^\n]*\n(.*?)```', response, re.DOTALL)
 
     @property
     def fitness(self):
         if self.evaluation is None:
             return None
         return self.evaluation.fitness
+    
+    @property
+    def program(self):
+        return '\n'.join(self.solution_part_strs)
 
     @property
     def program_length(self):
@@ -29,8 +33,8 @@ class Solution(Artifact):
         header_str, eval_str = parstr.split('\n')
         return f"""
 {header_str}
-```python
-{self.program}
+```
+{'\n'.join(self.solution_part_strs)}
 ```
 {eval_str}
 """

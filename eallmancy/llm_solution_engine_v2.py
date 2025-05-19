@@ -12,7 +12,7 @@ import itertools
 from llm4ad.base.code import Program
 from eallmancy.base.artifact import Artifact
 from eallmancy.base.problem_spec import ProblemSpec
-from eallmancy.base.solution import Solution
+from eallmancy.base2.single_part_solution import SinglePartSolution
 from eallmancy.base.reflection import Reflection
 from eallmancy.base.evaluation import Evaluation
 from eallmancy.engine_trace import EngineTrace
@@ -114,7 +114,7 @@ class EngineV2:
         resp_txt_trim = SampleTrimmer.auto_trim(resp_pythoncode)
         prog = SampleTrimmer.sample_to_program(resp_txt_trim, self._problem_spec.template)
 
-        if not issubclass(arte_class, Solution):
+        if not issubclass(arte_class, SinglePartSolution):
             evaluation = None
         elif prog is None:
             evaluation = Evaluation(fitness=float("inf"), errors="no program found")

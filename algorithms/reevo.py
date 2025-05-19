@@ -8,7 +8,7 @@ import os
 
 from eallmancy.llm_solution_engine_v2 import EngineV2
 
-from eallmancy import Artifact, Solution, ProblemSpec
+from eallmancy import Artifact, SinglePartSolution, ProblemSpec
 from typing import List, Optional
 import os
 import re
@@ -59,17 +59,17 @@ class DistilledReflection(Artifact):
 # distilled_reflection = engine.prompt_to_reflection.add_output(observation=r'<<(.*)>>')
 
 # @engine.prompt_to_solution
-def initial_solution() -> Solution:
+def initial_solution() -> SinglePartSolution:
     pmpt = f"""
 Write a `{engine._problem_spec.entrypoint}` function for "{engine._problem_spec.description}"
 Be very creative and implement the following Python function:
 {engine._problem_spec.template}
 Do not give additional explanations, output code only and enclose within a code block like ```python ... ```
 """
-    return engine.generate_artifact(pmpt, Solution)
+    return engine.generate_artifact(pmpt, SinglePartSolution)
 
 # @solutionpair_to_reflection
-def comparative_reflection(parenta: Solution, parentb: Solution) -> Reflection:
+def comparative_reflection(parenta: SinglePartSolution, parentb: SinglePartSolution) -> Reflection:
     scorea, scoreb = parenta.fitness, parentb.fitness
     if scorea > scoreb:
         better_parent, worse_parent = parenta, parentb
@@ -86,7 +86,7 @@ You respond with some hints for designing better heuristics, based on the two co
     return engine.generate_artifact(pmpt, Reflection, parents=[parenta, parentb])
 
 # @engine.prompt_to_solution
-def crossover_solution(parenta: Solution, parentb: Solution, comp_refl: Reflection) -> Solution:
+def crossover_solution(parenta: SinglePartSolution, parentb: SinglePartSolution, comp_refl: Reflection) -> SinglePartSolution:
     scorea, scoreb = parenta.fitness, parentb.fitness
     if scorea > scoreb:
         better_parent, worse_parent = parenta, parentb
@@ -100,7 +100,7 @@ Write a `{engine._problem_spec.entrypoint}` function for "{engine._problem_spec.
 [Improved code]
 Please write an improved function `{engine._problem_spec.entrypoint}`, according to the reflection. Output code only and enclose your code with Python code block: ```python ... ```.
 """
-    return engine.generate_artifact(pmpt, Solution, parents=[parenta, parentb, comp_refl])
+    return engine.generate_artifact(pmpt, SinglePartSolution, parents=[parenta, parentb, comp_refl])
 
 # @distilled_reflection
 def longterm_reflection(prev_longterm_refl: DistilledReflection, st_refls: List[Reflection]) -> DistilledReflection:
@@ -114,7 +114,7 @@ Write constructive hints for designing better heuristics, based on prior reflect
     return engine.generate_artifact(pmpt, DistilledReflection, parents=[prev_longterm_refl, *st_refls])
 
 # @engine.prompt_to_solution
-def elite_mutated_solution(longterm_refl: DistilledReflection, elite_soln: Solution):
+def elite_mutated_solution(longterm_refl: DistilledReflection, elite_soln: SinglePartSolution):
     pmpt = f"""
 Write a `{engine._problem_spec.entrypoint}` function for "{engine._problem_spec.description}"\n
 [Prior reflection]\n{longterm_refl}\n
@@ -125,7 +125,7 @@ Please write a mutated function `{engine._problem_spec.entrypoint}`, according t
     _par = [elite_soln]
     if longterm_refl is not None:
         _par.append(longterm_refl)
-    return engine.generate_artifact(pmpt, Solution, parents=_par)
+    return engine.generate_artifact(pmpt, SinglePartSolution, parents=_par)
     
 
 

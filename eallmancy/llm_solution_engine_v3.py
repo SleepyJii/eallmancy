@@ -12,11 +12,15 @@ import itertools
 from llm4ad.base.code import Program
 from eallmancy.base.artifact import Artifact
 from eallmancy.base.problem_spec import ProblemSpec
-from eallmancy.base.solution import Solution
+from eallmancy.base2.single_part_solution import SinglePartSolution
 from eallmancy.base.reflection import Reflection
 from eallmancy.base.evaluation import Evaluation
 from eallmancy.engine_trace import EngineTrace
 from threading import Lock, Thread
+
+from eallmancy.base2.problem_specs import EvolveGitSpec
+from eallmancy.base2.multi_part_solutions import MultiPartSolution, DiffSolution
+from eallmancy.workers.evaluation_worker import PythonEvaluateSolutionWorker, GitEvaluateSolutionWorker
 
 
 class _EngineSetupContext:
@@ -66,15 +70,28 @@ class EngineV3:
         self._worker_pool = None
 
         self.trace: Optional[EngineTrace] = None
+        self.is_running = False
 
     def is_ready(self):
         return self._sampler is not None and self._problem_spec is not None
 
-    def __enter__(self):
-        pass
+    def start(self):
+        if not self.is_ready():
+            raise Exception("engine does not have both API and ProblemSpec! cannot start")
 
-    def __exit__(self):
-        pass
+        if type(self._problem_spec) is EvolveGitSpec:
+            self._worker_pool = GitEvaluateSolutionWorker(self._problem_spec)
+        else:
+            self._worker_pool = PythonEvaluateSolutionWorker(self._problem_spec)
+
+        self.start_trace()
+        self.is_running = True
+    
+    def finish(self):
+        self._worker_pool = None
+        self.is_running = False
+        return self.dump_trace()
+
 
     def start_trace(self):
         if self.trace is None:
@@ -87,11 +104,16 @@ class EngineV3:
         return tr
     
     def register_artifact(self, arte: Artifact, parents: List[Artifact] = []):
+        if not self.is_running:
+            raise Exception("cannot generate artifact when the engine has not been started!")
+        
         if self.trace is not None:
             self.trace._register_trace(parents, arte)
 
 
     def generate_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
+        if not self.is_running:
+            raise Exception("cannot generate artifact when the engine has not been started!")
         
         resp_txt_raw = self._sampler._llm.draw_sample(prompt) # TODO: add backoffs
 
@@ -103,10 +125,9 @@ class EngineV3:
             )
         )
 
-        if artifact.is_solution:
-             # TODO: this will require artifact hooks and workerpool defn
-            evaluation = self._worker_pool.evaluate(artifact)
-            artifact.set_evaluation(evaluation)
+        if issubclass(arte_class, MultiPartSolution):
+            evaluation = self._worker_pool.evaluate_solution(artifact)
+            artifact = artifact.set_evaluation(evaluation)
 
         self.register_artifact(artifact, parents)
 

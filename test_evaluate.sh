@@ -1,7 +1,9 @@
 #!/root/eallmancy/venv/bin/python
 
-from engine_trace import EngineTrace
+import os
 
-print(EngineTrace.save_yo_mama.__doc__)
+from eallmancy.engine_trace import EngineTrace
 
-print(3.5)
+rr = ('save_yo_mama doc', EngineTrace.save_yo_mama.__doc__)
+
+print(3.5) # this final print is what provides actual score to EALLMancy

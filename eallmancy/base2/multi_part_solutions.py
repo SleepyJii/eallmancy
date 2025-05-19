@@ -10,6 +10,7 @@ class MultiPartSolution(Artifact):
     def __init__(self, raw_resp, *args, **kwargs):
         super().__init__(raw_resp, *args, **kwargs)
         self.solution_part_strs = re.findall(r'```[^\n]*\n(.*?)```', raw_resp, re.DOTALL)
+    
 
 class DummyMultiPartSolution:
     def __init__(self, solution_part_strs):

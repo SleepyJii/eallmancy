@@ -3,7 +3,7 @@
 ### uses api information and problem details for easy prompt evaluation
 
 
-from eallmancy import LLMSolutionEngine, Solution, ProblemSpec
+from eallmancy import LLMSolutionEngine, SinglePartSolution, ProblemSpec
 import os
 
 
@@ -92,7 +92,7 @@ import math
 from typing import List
 
 
-def selection(k, population: List[Solution]):
+def selection(k, population: List[SinglePartSolution]):
     funcs = [f for f in population if not math.isinf(f.evaluation.fitness)]
     func = sorted(funcs, key=lambda f: f.evaluation.fitness, reverse=False)
     p = [1 / (r + len(func)) for r in range(len(func))]
@@ -103,7 +103,7 @@ def selection(k, population: List[Solution]):
     return [np.random.choice(func, p=p) for _ in range(k)]
 
 
-def eoh(num_generations=3, num_initial_samples=3, num_e1_parents=2, num_e2_parents=2, e1_per_gen=1 ,e2_per_gen=1, m1_per_gen=1, m2_per_gen=1, problem_spec: ProblemSpec=None) -> Solution:
+def eoh(num_generations=3, num_initial_samples=3, num_e1_parents=2, num_e2_parents=2, e1_per_gen=1 ,e2_per_gen=1, m1_per_gen=1, m2_per_gen=1, problem_spec: ProblemSpec=None) -> SinglePartSolution:
 
     # this syntactical sugar just lets you specify an optional new problemspec to eoh(..)
     # specifying the problem spec in the engine constructor is also sufficient

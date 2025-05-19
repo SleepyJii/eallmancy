@@ -3,7 +3,7 @@
 ## PROMPT-TO-SOLUTION ENGINE
 ### uses api information and problem details for easy prompt evaluation
 
-from eallmancy import LLMSolutionEngine, Solution, ProblemSpec
+from eallmancy import LLMSolutionEngine, SinglePartSolution, ProblemSpec
 import os
 
 
@@ -83,7 +83,7 @@ def _softmax(logits: np.ndarray, temperature: float) -> np.ndarray:
 class FunIsland:
     def __init__(self, funcs_per_prompt=4, selection_temp_init=0.1, selection_temp_period=30000):
         self.funcs_per_prompt = funcs_per_prompt
-        self._clusters: Dict[tuple[float, ...], List[Solution]] = defaultdict(lambda : [])
+        self._clusters: Dict[tuple[float, ...], List[SinglePartSolution]] = defaultdict(lambda : [])
         self.selection_temp_init = selection_temp_init
         self.selection_temp_period = selection_temp_period
     

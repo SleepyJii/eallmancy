@@ -2,14 +2,15 @@
 ## PROMPT-TO-SOLUTION ENGINE
 ### uses api information and problem details for easy prompt evaluation
 
-from eallmancy.llm_solution_engine_v2 import EngineV2
+from eallmancy.llm_solution_engine_v3 import EngineV3
+from eallmancy import Artifact
 
-from eallmancy import Solution, ProblemSpec
+from eallmancy import SinglePartSolution, ProblemSpec
 import os
 import re
 
 
-engine = EngineV2(
+engine = EngineV3(
     api_spec=dict(
         host="api.openai.com",
         key=os.environ['OPENAI_API_KEY'],
@@ -21,14 +22,14 @@ engine = EngineV2(
 
 
 
-class ThoughtfulSolution(Solution):
+class ThoughtfulSolution(SinglePartSolution):
     def __init__(self, response: str, *args, **kwargs):
         super().__init__(response, *args, **kwargs)
         self.thought = (re.findall(r'<<(.*)>>', response) or [None])[-1]
 
 
     def __str__(self):
-        parstr = super().super().__str__()
+        parstr = Artifact.__str__(self)
         header_str, eval_str = parstr.split('\n')
         return f"""
 {header_str}
@@ -36,7 +37,7 @@ class ThoughtfulSolution(Solution):
 {self.thought}
 
 ```python
-{self.program}
+{'\n'.join(self.solution_part_strs)}
 ```
 {eval_str}
 """
@@ -121,7 +122,7 @@ from threading import Lock, Thread
 
 class Population:
     def __init__(self, init_members=[], popsize=10, max_samples=100, max_generations=100):
-        self.members: List[Solution] = init_members
+        self.members: List[SinglePartSolution] = init_members
         self.popsize = popsize
         self.lock = Lock()
         self.max_samples, self.max_generations = max_samples, max_generations
@@ -167,11 +168,12 @@ def _eoh_worker(population: Population, e1_per_gen=1 ,e2_per_gen=1, m1_per_gen=1
             population.register([m2_solution(*population.selection(1))])
 
 
-def eoh(num_initial_samples=3, pop_size=5, max_samples=10, max_generations=10, problem_spec: ProblemSpec=None, n_workers=1, **kwargs) -> Solution:
+def eoh(num_initial_samples=3, pop_size=5, max_samples=10, max_generations=10, problem_spec: ProblemSpec=None, n_workers=1, **kwargs) -> SinglePartSolution:
 
     # this syntactical sugar just lets you specify an optional new problemspec to eoh(..)
     # specifying the problem spec in the engine constructor is also sufficient
-    with engine.set_problem(problem_spec):  
+    with engine.set(problem_spec=problem_spec): 
+        engine.start()
 
         population = Population(
             [i1_solution() for _ in range(num_initial_samples)],
