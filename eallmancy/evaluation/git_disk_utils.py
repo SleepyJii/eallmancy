@@ -81,18 +81,22 @@ class TmpCheckoutContext:
         self.source_root = find_git_root(source_path)
         self.tmp_root = None
         self.idx = idx
+        self.checked_out = False
     
     def __enter__(self):
         self.tmp_root = tempfile.mkdtemp(prefix='eallm_', suffix=f'_w{self.idx}')
         # TODO: *need* to handle git ignore!
         copy_git_repo_excluding_ignored(self.source_root, self.tmp_root)
+        self.checked_out = True
         # shutil.copytree(self.source_root, self.tmp_root, dirs_exist_ok=True)
 
     def __exit__(self, exception_type, exception_value, exception_traceback):
-        shutil.rmtree(self.tmp_root)
-        self.tmp_root = None
-        if exception_type is not None:
-            raise exception_value.with_traceback(exception_traceback)
+        if self.checked_out:
+            shutil.rmtree(self.tmp_root)
+            self.tmp_root = None
+            self.checked_out = False
+            if exception_type is not None:
+                raise exception_value.with_traceback(exception_traceback)
 
 
 

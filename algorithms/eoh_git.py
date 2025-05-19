@@ -184,8 +184,7 @@ def eoh(num_initial_samples=3, pop_size=5, max_samples=10, max_generations=10, p
 
     # this syntactical sugar just lets you specify an optional new problemspec to eoh(..)
     # specifying the problem spec in the engine constructor is also sufficient
-    with engine.set(problem_spec=problem_spec): 
-        engine.start()
+    with engine.set(problem_spec=problem_spec) as ec: 
 
         population = Population(
             [i1_solution() for _ in range(num_initial_samples)],
@@ -202,7 +201,7 @@ def eoh(num_initial_samples=3, pop_size=5, max_samples=10, max_generations=10, p
         for t in sampler_threads:
             t.join()
 
-        return min(population.members, key=lambda f: f.fitness)
+    return min(population.members, key=lambda f: f.fitness), ec.trace
 
 
 if __name__=="__main__":

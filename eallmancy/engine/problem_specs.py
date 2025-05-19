@@ -18,52 +18,55 @@ from eallmancy.evaluation.git_disk_utils import find_evolve_marked_file_sections
 
 
 @dataclass
-class EvolveGitSpec:#(ProblemSpec):
+class EvolveGitSpec(ProblemSpec):
 
     description: str
     git_path: str
     eval_script_path: str
-
-    # template: str
-    # entrypoint: str
-    # evaluator: callable
 
     def __init__(self, description:str, git_path:str, eval_script_path:str):
         self.description = description
         self.git_path = git_path
         self.eval_script_path = eval_script_path
         
-        evolve_fps = find_evolve_marked_files(git_path)
-        self.section_templates = find_evolve_marked_file_sections(evolve_fps[0])
-        self.template = '\n\n'.join(self.section_templates)
-
+        self._file_to_evolve = None
+        self._section_templates = None
+        self._template = None
+    
     def validate_paths(self):
         if not Path(self.git_path).exists():
             raise Exception(f'`{self.git_path}` does not exist')
         if not Path(self.eval_script_path).exists():
             raise Exception(f'`{self.eval_script_path}` does not exist')
+        
+    def _resolve(self):
+        self.validate_paths()
+        self._file_to_evolve = find_evolve_marked_files(self.git_path)[0]
+        self._section_templates = find_evolve_marked_file_sections(self._file_to_evolve)
+        self._template = '\n\n'.join(self._section_templates)
 
+    @property
+    def file_to_evolve(self):
+        if self._file_to_evolve is None:
+            self._resolve()
+        return self._file_to_evolve
 
-    # @template.setter
-    # def template(self, v: str) -> None:
-    #     pass
-
-    # @property
-    # def template(self) -> str:
-    #     return self._template
-
-    # @entrypoint.setter
-    # def entrypoint(self, v: str) -> None:
-    #     pass
+    @property
+    def section_templates(self):
+        if self._section_templates is None:
+            self._resolve()
+        return self._section_templates
+    
+    @property
+    def template(self):
+        if self._template is None:
+            self._resolve()
+        return self._template
 
     @property
     def entrypoint(self) -> str:
         # name of the function in signature to be evaluated/used directly
         return ''
-
-    # @evaluator.setter
-    # def evaluator(self, v: callable) -> None:
-    #     pass
 
     @property
     def evaluator(self) -> callable:

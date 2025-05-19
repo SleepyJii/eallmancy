@@ -13,20 +13,25 @@ from llm4ad.base.code import Program
 from eallmancy.artifacts.artifact import Artifact
 from eallmancy.engine.problem_spec import ProblemSpec
 from eallmancy.artifacts.single_part_solution import SinglePartSolution
-from eallmancy.evaluation.evaluation import Evaluation
 from eallmancy.engine.engine_trace import EngineTrace
 from threading import Lock, Thread
 
+from eallmancy.artifacts.multi_part_solutions import (
+    MultiPartSolution, DiffSolution, DummyMultiPartSolution
+)
+from eallmancy.evaluation import (
+    EvaluationWorkerPool,
+    PythonEvaluationWorker, GitEvaluationWorker, Evaluation
+)
 from eallmancy.engine.problem_specs import EvolveGitSpec
-from eallmancy.artifacts.multi_part_solutions import MultiPartSolution, DiffSolution, DummyMultiPartSolution
-from eallmancy.evaluation.evaluation_worker import PythonEvaluateSolutionWorker, GitEvaluateSolutionWorker
 
 
-class _EngineSetupContext:
+class EngineSetupContext:
     def __init__(self, engine):
         self._engine: EngineV3 = engine
         self._old_sampler, self._old_pspec = [None]*2
         self._new_sampler, self._new_pspec = [None]*2
+        self._trace = None  # used as a holder if engine completes first
     
     def __call__(self, api_spec=None, problem_spec=None):
         if self._engine._problem_spec is None and problem_spec is None:
@@ -48,12 +53,22 @@ class _EngineSetupContext:
         return self
 
     def __enter__(self):
+        self._trace = None
         self._engine._sampler = self._new_sampler
         self._engine._problem_spec = self._new_pspec
+        self._engine.start()
+        return self
 
     def __exit__(self, type, value, traceback):
         self._engine._sampler = self._old_sampler
         self._engine._problem_spec = self._old_pspec
+        self._engine.finish()
+    
+    @property
+    def trace(self):
+        if self._trace is not None:
+            return self._trace
+        return self._engine.trace
 
 
 
@@ -64,7 +79,7 @@ class EngineV3:
         else:
             self._sampler = SampleTrimmer(HttpsApi(**api_spec))
         self._problem_spec = problem_spec
-        self.set = _EngineSetupContext(self)
+        self.set = EngineSetupContext(self)
 
         self._worker_pool = None
 
@@ -83,19 +98,19 @@ class EngineV3:
         if not self.is_ready():
             raise Exception("engine does not have both API and ProblemSpec! cannot start")
 
-        if type(self._problem_spec) is EvolveGitSpec:
-            self._worker_pool = GitEvaluateSolutionWorker(self._problem_spec)
-        else:
-            self._worker_pool = PythonEvaluateSolutionWorker(self._problem_spec)
+        self._worker_pool = EvaluationWorkerPool(
+            GitEvaluationWorker if (type(self._problem_spec) is EvolveGitSpec) else PythonEvaluationWorker,
+            ps=self._problem_spec,
+            n_workers=1 # waiting on impl
+        ).setup()
 
         self.start_trace()
         self.is_running = True
     
     def finish(self):
-        self._worker_pool = None
+        self._worker_pool = None # this should implicitly call __del__ on the workerpool
         self.is_running = False
         return self.dump_trace()
-
 
     def start_trace(self):
         if self.trace is None:
