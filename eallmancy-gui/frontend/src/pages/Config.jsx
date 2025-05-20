@@ -1,0 +1,146 @@
+// src/pages/Config.jsx
+import { useState, useEffect } from 'react';
+
+export default function Config() {
+  const [config, setConfig] = useState({
+    repoPath: '',
+    evalScript: '',
+    description: '',
+    algorithm: 'pending',
+    overwrite: true,
+  });
+
+  const [validation, setValidation] = useState({
+    repoPath: 'valid',
+    evalScript: 'valid',
+    description: 'valid',
+    algorithm: 'valid',
+    overwrite: 'valid',
+  });
+
+  const [algorithmOptions, setAlgorithmOptions] = useState(['loading...']);
+
+  useEffect(() => {
+    fetch('/api/config/algorithms')
+      .then(res => res.json())
+      .then(data => {
+        setAlgorithmOptions(data);
+        setConfig(c => ({ ...c, ['algorithm']: data[0]}));
+      })
+      .catch(() => setAlgorithmOptions(['error']));
+  }, []);
+
+  
+  // const validateField = (field, value) => {
+  //   setValidation(v => ({ ...v, [field]: 'pending' }));
+
+  //   fetch(`/api/config/validate/${field}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ value: value }) })
+  //   setTimeout(() => {
+  //     const isValid = value.trim() !== '';
+  //     setValidation(v => ({ ...v, [field]: isValid ? 'valid' : 'invalid' }));
+  //   }, 500);
+  // };
+
+  const handleChange = (field, value) => {
+    setConfig(c => ({ ...c, [field]: value }));
+    // validateField(field, value); // <- field-level validation via fetch
+  };
+
+  const handleCheckbox = (field, checked) => {
+    setConfig(c => ({ ...c, [field]: checked }));
+    // setValidation(v => ({ ...v, [field]: 'valid' }));
+
+    // fetch(`/api/config/validate/${field}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ value: String(checked) }) })
+  };
+
+  const allValid = Object.values(validation).every(v => v === 'valid');
+
+  const borderStyle = field =>
+    validation[field] === 'invalid'
+      ? '2px solid red'
+      : validation[field] === 'pending'
+      ? '2px dashed orange'
+      : undefined;
+
+  const handleSubmit = () => {
+    if (!allValid) return;
+
+    console.log('Final config:', config);
+    fetch('/api/config/submit', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(config) })
+    // TODO: trigger frontend transition/animation on success
+  };
+
+  return (
+    <div style={{ padding: '20px' }}>
+
+      <div>
+        <label>Git Repo Path:</label><br />
+        <input
+          type="text"
+          value={config.repoPath}
+          onChange={e => handleChange('repoPath', e.target.value)}
+          style={{ border: borderStyle('repoPath'), width: '400px' }}
+          placeholder="/path/to/evolve/target/gitrepo"
+        /><br /><br />
+
+        <label>Eval Script Path:</label><br />
+        <input
+          type="text"
+          value={config.evalScript}
+          onChange={e => handleChange('evalScript', e.target.value)}
+          style={{ border: borderStyle('evalScript'), width: '400px' }}
+          placeholder="/path/to/eval/script.sh"
+        /><br /><br />
+
+        <label>Problem Description:</label><br />
+        <textarea
+          value={config.description}
+          onChange={e => handleChange('description', e.target.value)}
+          rows={4}
+          cols={60}
+          style={{ border: borderStyle('description') }}
+          placeholder="We want to edit these sections of code to maximize a real-valued black box criteria"
+        /><br />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '70px', marginTop: '20px' }}>
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '40px' }}>
+          <div>
+            <label>Algorithm</label><br />
+            <select
+              value={config.algorithm}
+              onChange={e => handleChange('algorithm', e.target.value)}
+            >
+              {algorithmOptions.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label>LiveOverwrite</label><br />
+            <input
+              type="checkbox"
+              checked={config.overwrite}
+              onChange={e => handleCheckbox('overwrite', e.target.checked)}
+            />
+          </div>
+
+
+
+        </div>
+
+        <button
+          onClick={handleSubmit}
+          disabled={!allValid}
+          style={{ fontSize: '1.2em', padding: '10px 20px' }}
+        >
+          Confirm
+        </button>
+      </div>
+
+    </div>
+
+  );
+}

@@ -1,3 +1,4 @@
+
 llm4ad
 # reevo @ https://github.com/ai4co/reevo.git
 evaluation @ https://github.com/sunnweiwei/CO-Bench.git
@@ -5,3 +6,5 @@ evaluation @ https://github.com/sunnweiwei/CO-Bench.git
 huggingface_hub
 aco
 fastapi
+uvicorn
+
