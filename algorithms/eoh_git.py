@@ -74,10 +74,10 @@ Remember to include appropriate indentations in both SEARCH and REPLACE blocks. 
 
 def e1_solution(*parent_solns):
     prmpt = f'''{engine._problem_spec.description}
-I have {len(parent_solns)} existing algorithms with their codes as follows:
+I have {len(parent_solns)} existing solutions with their contents as follows:
 {'\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parent_solns)])}
-Please help me create a new algorithm that has a totally different form from the given ones. 
-1. First, describe your new algorithm and main steps in one sentence. The description must be inside within boxed <<>>.
+Please help me create a new solution that is totally different from the given ones. 
+1. First, describe your new solution and its contents in one sentence. The description must be inside within boxed <<>>.
 2. Next, improve on the following sections of code:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
 Provide your implementation in matching code blocks, each marked like ``` ... ```. Do not give additional explanations.'''
@@ -86,11 +86,11 @@ Provide your implementation in matching code blocks, each marked like ``` ... ``
 
 def e2_solution(*parent_solns):
     prmpt = f'''{engine._problem_spec.description}
-I have {len(parent_solns)} existing algorithms with their codes as follows:
+I have {len(parent_solns)} existing solutions with their contents as follows:
 {'\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parent_solns)])}
-Please help me create a new algorithm that has a totally different form from the given ones but can be motivated from them.
-1. Firstly, identify the common backbone idea in the provided algorithms. 
-2. Secondly, based on the backbone idea describe your new algorithm in one sentence. The description must be inside within boxed <<>>.
+Please help me create a new solution that is totally different from the given ones but can be motivated from them.
+1. Firstly, identify the common backbone idea in the provided solutions. 
+2. Secondly, based on the backbone idea describe your new solution in one sentence. The description must be inside within boxed <<>>.
 3. Thirdly, improve on the following sections of code:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
 Provide your implementation in matching code blocks, each marked like ``` ... ```. Do not give additional explanations.'''
@@ -99,10 +99,10 @@ Provide your implementation in matching code blocks, each marked like ``` ... ``
 
 def m1_solution(parent_soln):
     prmpt = f'''{engine._problem_spec.description}
-I have one algorithm with its code as follows...
+I have one solution with its content as follows...
 {str(parent_soln)}
-Please assist me in creating a new algorithm that has a different form but can be a modified version of the algorithm provided.
-1. First, describe your new algorithm and main steps in one sentence. The description must be inside within boxed <<>>.
+Please assist me in creating a new solution that is different but can be a modified version of the solution provided.
+1. First, describe your new solution and main steps in one sentence. The description must be inside within boxed <<>>.
 2. Next, improve on the following sections of code:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
 Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
@@ -112,10 +112,10 @@ Remember to include appropriate indentations in both SEARCH and REPLACE blocks. 
 
 def m2_solution(parent_soln):
     prmpt = f'''{engine._problem_spec.description}
-I have one algorithm with its code as follows...
+I have one solution with its code as follows...
 {str(parent_soln)}
-Please identify the main algorithm parameters and assist me in creating a new algorithm that has a different parameter settings of the score function provided.
-1. First, describe your new algorithm and main steps in one sentence. The description must be inside within boxed <<>>.
+Please identify the main solution parameters and assist me in creating a new solution that has a different parameter settings of the score function provided.
+1. First, describe your new solution and main steps in one sentence. The description must be inside within boxed <<>>.
 2. Next, improve on the following sections of code:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
 Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
