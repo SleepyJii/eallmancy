@@ -4,3 +4,4 @@ evaluation @ https://github.com/sunnweiwei/CO-Bench.git
 
 huggingface_hub
 aco
+fastapi
