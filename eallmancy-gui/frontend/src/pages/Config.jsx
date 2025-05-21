@@ -1,14 +1,16 @@
 // src/pages/Config.jsx
 import { useState, useEffect } from 'react';
+import { useConfigStore } from '../state/configStore';
+import { useGlobalStore } from '../state/globalStore';
 
 export default function Config() {
-  const [config, setConfig] = useState({
-    repoPath: '',
-    evalScript: '',
-    description: '',
-    algorithm: 'pending',
-    overwrite: true,
-  });
+
+
+  const config = useConfigStore(state => state.config);
+  const setConfigField = useConfigStore(state => state.setField);
+  const global = useGlobalStore(state => state.config);
+  const setGlobalField = useGlobalStore(state => state.setField);
+
 
   const [validation, setValidation] = useState({
     repoPath: 'valid',
@@ -25,32 +27,18 @@ export default function Config() {
       .then(res => res.json())
       .then(data => {
         setAlgorithmOptions(data);
-        setConfig(c => ({ ...c, ['algorithm']: data[0]}));
+        setConfigField('algorithm', data[0]);
       })
       .catch(() => setAlgorithmOptions(['error']));
   }, []);
 
-  
-  // const validateField = (field, value) => {
-  //   setValidation(v => ({ ...v, [field]: 'pending' }));
-
-  //   fetch(`/api/config/validate/${field}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ value: value }) })
-  //   setTimeout(() => {
-  //     const isValid = value.trim() !== '';
-  //     setValidation(v => ({ ...v, [field]: isValid ? 'valid' : 'invalid' }));
-  //   }, 500);
-  // };
 
   const handleChange = (field, value) => {
-    setConfig(c => ({ ...c, [field]: value }));
-    // validateField(field, value); // <- field-level validation via fetch
+    setConfigField(field, value);
   };
 
   const handleCheckbox = (field, checked) => {
-    setConfig(c => ({ ...c, [field]: checked }));
-    // setValidation(v => ({ ...v, [field]: 'valid' }));
-
-    // fetch(`/api/config/validate/${field}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ value: String(checked) }) })
+    setConfigField(field, checked);
   };
 
   const allValid = Object.values(validation).every(v => v === 'valid');
@@ -66,8 +54,15 @@ export default function Config() {
     if (!allValid) return;
 
     console.log('Final config:', config);
-    fetch('/api/config/submit', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(config) })
-    // TODO: trigger frontend transition/animation on success
+    {
+      fetch('/api/config/submit', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(config) })
+      .then(res => {
+        if (res.ok) {
+          setGlobalField('has_config', true);
+        }
+      })
+      // .catch(() => ERRORALERT)
+    };
   };
 
   return (
@@ -126,8 +121,6 @@ export default function Config() {
               onChange={e => handleCheckbox('overwrite', e.target.checked)}
             />
           </div>
-
-
 
         </div>
 
