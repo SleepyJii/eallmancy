@@ -14,7 +14,7 @@ import re
 engine = EngineV3(
     api_spec=dict(
         host="api.openai.com",
-        key=os.environ['OPENAI_API_KEY'],
+        key=os.environ.get('OPENAI_API_KEY', ''),
         model="gpt-4o-mini",
         timeout=20
     ),

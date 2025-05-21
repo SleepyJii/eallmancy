@@ -11,7 +11,7 @@ class Artifact:
     def __init__(self, response: str, id: Optional[int] = None, **kwargs):
         self.trace_id = id
         self.raw_resp = response
-        self.timestamp = datetime.datetime.now()
+        self.timestamp = datetime.datetime.utcnow()
         self.evaluation = None
         self.is_solution = False  # whether or not engine should try and evaluate
     

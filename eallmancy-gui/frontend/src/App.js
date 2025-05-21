@@ -1,8 +1,8 @@
 // src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Config from './pages/Config';
 import ControlPanel from './pages/ControlPanel';
 import TraceView from './pages/TraceView';
+import Poller from './components/Poller';
 import { useState, useEffect } from 'react';
 
 import Banner from './components/Banner';
@@ -16,10 +16,10 @@ function App() {
   }, []);
   return (
     <Router>
-    <Banner />
+      <Banner />
+      <Poller />
       <Routes>
-        <Route path="/" element={<Config />} />
-        <Route path="/config" element={<Config />} />
+        <Route path="/" element={<ControlPanel />} />
         <Route path="/controlpanel" element={<ControlPanel />} />
         <Route path="/traceview" element={<TraceView />} />
       </Routes>
@@ -29,4 +29,4 @@ function App() {
 }
 
 export default App;
-//javascript:(function () { var script = document.createElement('script'); script.src="https://cdn.jsdelivr.net/npm/eruda"; document.body.append(script); script.onload = function () { eruda.init(); } })();
+
