@@ -180,11 +180,11 @@ def _eoh_worker(population: Population, e1_per_gen=1 ,e2_per_gen=1, m1_per_gen=1
             population.register([m2_solution(*population.selection(1))])
 
 
-def eoh(num_initial_samples=3, pop_size=5, max_samples=10, max_generations=10, problem_spec: ProblemSpec=None, n_workers=1, **kwargs):
+def eoh(num_initial_samples=3, pop_size=5, max_samples=10, max_generations=10, problem_spec: ProblemSpec=None, api_spec=None, n_workers=1, **kwargs):
 
     # this syntactical sugar just lets you specify an optional new problemspec to eoh(..)
     # specifying the problem spec in the engine constructor is also sufficient
-    with engine.set(problem_spec=problem_spec) as ec: 
+    with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
 
         population = Population(
             [i1_solution() for _ in range(num_initial_samples)],

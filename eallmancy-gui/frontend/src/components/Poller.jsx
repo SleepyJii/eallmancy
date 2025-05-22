@@ -10,11 +10,11 @@ export default function Poller() {
   const statusRef = useRef(global.status.timestamp);
   const traceRef = useRef(global.trace.timestamp);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
+  const checkUpdates = () => {
       fetch('/api/timestamps')
         .then(res => res.json())
         .then(remote => {
+          console.log('found server timestamps', remote, 'vs frontend timestamps', statusRef.current, traceRef.current);
           if (remote.status.timestamp > statusRef.current) {
             fetch('/api/view/status')
               .then(res => res.json())
@@ -35,10 +35,15 @@ export default function Poller() {
           }
         })
         .catch(err => console.error('Polling error:', err));
-    }, 5000);
+    }
+
+  useEffect(() => {
+    const interval = setInterval(checkUpdates, 5000);
 
     return () => clearInterval(interval);
   }, [setField]);
+
+  checkUpdates(); // run manually once to handle initial navigation to page
 
   return null;
 }

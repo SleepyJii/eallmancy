@@ -1,5 +1,5 @@
 
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
 import { useGlobalStore } from '../state/globalStore';
 
 // import ReactFlow, { Background, Controls } from 'react-flow-renderer';
@@ -17,6 +17,7 @@ import {
   Position,
   SmoothStepEdge,
   BezierEdge,
+  BaseEdge, getBezierPath,
   type Node,
   type Edge,
   type OnConnect,
@@ -25,29 +26,106 @@ import {
 } from '@xyflow/react';
 
 
-function DotNode() {
-  console.log("rendering DotNode");
+
+function getFitnessColor(value, min, max) {
+  const _v = parseFloat(value);
+  const t = (_v - min) / (max - min); // normalize to [0, 1]
+
+  if (isNaN(t)) return '#000'; // nan → black
+
+  // Green (low) → Yellow (mid) → Red (high)
+  const r = Math.round(255 * t);
+  const g = Math.round(255 * (1 - t));  // peak green at t = 0.5
+  const b = 0;
+
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+
+export const GLOW_COLOR = '#111'; // or any color you want
+
+
+function DotNode({ data, selected }) {
+  const global = useGlobalStore(state => state.global);
+  const selectedNodeId = useGlobalStore(state => state.global.ui.selected_node_id);
+  const isSelected = selectedNodeId == data.id;
+
+  const minFitness = useGlobalStore(state => state.global.ui.min_fitness);
+  const maxFitness = useGlobalStore(state => state.global.ui.max_fitness);
+
+  const color = getFitnessColor(data.evaluation.fitness, minFitness, maxFitness);
+
   return (
     <div
       style={{
-        width: 12,
-        height: 12,
-        backgroundColor: 'black',
-        borderRadius: '50%',
+        position: 'relative',
+        width: 20,
+        height: 20,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
-      <Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: 'none' }} />
-      <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: 'none' }} />
+      {isSelected && (
+        <div
+          style={{
+            position: 'absolute',
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+            border: `2px solid ${GLOW_COLOR}`,
+            boxSizing: 'border-box',
+          }}
+        />
+      )}
+      <div
+        style={{
+          width: 12,
+          height: 12,
+          borderRadius: '50%',
+          backgroundColor: color ,
+          position: 'relative',
+        }}
+      >
+        <Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: 'none' }} />
+        <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: 'none' }} />
+      </div>
     </div>
   );
 }
 
-function WideSmoothEdge(props) {
-  return <SmoothStepEdge {...props} borderRadius={20} />;
-};
+
+function BezierGlowEdge({ id, source, target, sourceX, sourceY, targetX, targetY }) {
+  const selectedId = useGlobalStore(state => state.global.ui.selected_node_id);
+  const isHighlighted = source === selectedId || target === selectedId;
+
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+  });
+
+  return (
+    <>
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        style={{
+          stroke: isHighlighted ? GLOW_COLOR : '#999',
+          strokeWidth: isHighlighted ? 1.75 : 1.0,
+        }}
+        markerEnd="url(#arrowhead)"
+      />
+    </>
+  );
+}
+
+
+
 
 const edgeTypes = {
-  smooth: BezierEdge,
+  smooth: BezierGlowEdge,
 };
 
 const nodeTypes = {
@@ -60,33 +138,69 @@ export default function LineageView() {
   const global = useGlobalStore(state => state.global);
   const setGlobalField = useGlobalStore(state => state.setField);
 
+
+  const handleNodeClick = useCallback((event, node) => {
+    setGlobalField('ui', { ...global.ui, selected_node_id: node.id });
+  }, [setGlobalField]);
+
+
+  const traceGraph = useGlobalStore(state => state.global.trace.graph);
   const defaultNodeProps = {
     sourcePosition: Position.Bottom,
     targetPosition: Position.Top,
+    type: 'dot',
   };
-  const initialNodes = [
-    { id: 'a1', position: { x: 50, y: 50 },  data: {}, type: 'dot', ...defaultNodeProps },
-    { id: 'b1', position: { x: 50, y: 150 },  data: {}, type: 'dot', ...defaultNodeProps },
-    { id: 'b2', position: { x: 150, y: 150 }, data: {}, type: 'dot', ...defaultNodeProps },
-    { id: 'c1', position: { x: 150, y: 250 }, data: {}, type: 'dot', ...defaultNodeProps },
-  ];
-  const initialEdges = [
-    { id: 'e1', source: 'a1', target: 'b1', type: 'smooth' },
-    { id: 'e2', source: 'a1', target: 'b2', type: 'smooth' },
-    { id: 'e3', source: 'b1', target: 'c1', type: 'smooth' },
-  ];
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const onConnect: OnConnect = useCallback(
-    (params) => setEdges((els) => addEdge(params, els)),
-    [],
-  );
- 
+
+  const nodes = useMemo(() => {
+    return traceGraph.nodes.map(node => ({
+      ...node,
+      position: {
+        x: node.position.x_rank * 50 + 50,
+        y: node.position.y_rank * 50 + 50,
+      },
+      data: node,
+      ...defaultNodeProps,
+    }));
+  }, [traceGraph.nodes]);
+
+  // const edges = traceGraph.edges.map((edge, i) => ({
+  //   id: `e${i}`,
+  //   source: edge.source,
+  //   target: edge.target,
+  //   type: 'smooth',
+  // }));
+
+  const edges = useMemo(() => {
+    return traceGraph.edges.map((edge, i) => ({
+      id: `e${i}`,
+      source: edge.source,
+      target: edge.target,
+      type: 'smooth',
+    }));
+  }, [traceGraph.edges]);
+
+  // color calcs
+  useEffect(() => {
+    const nodes = useGlobalStore.getState().global.trace.graph.nodes;
+    if (!nodes || nodes.length === 0) return;
+    const fitnessValues = nodes
+      .map(n => parseFloat(n.evaluation.fitness))
+      .filter(val => !isNaN(val));
+
+    if (fitnessValues.length > 0) {
+      const min = Math.min(...fitnessValues);
+      const max = Math.max(...fitnessValues);
+      setGlobalField('ui', { ...global.ui, min_fitness: min, max_fitness: max });
+      console.log('color scale set between', min, max);
+    } else {
+      console.log('no fitness values yet, not defining color scale');
+    }
+  }, [global.trace.timestamp]);
+
+
   console.log('rendering...:')
   console.log(nodes);
 
-
-  const panBounds = { left: 0, right: 300, top: 0, bottom: 500 };
   return (
     <div style={{
        width: 'min(600px, 50%)',
@@ -104,23 +218,41 @@ export default function LineageView() {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
 
         zoomOnScroll={true}
+          minZoom={0.1}   // allows zooming in further
+
         panOnScroll={false}
         panOnDrag={true}
         nodesDraggable={false}
+        // onNodeClick={handleNodeClick}
+        onNodeClick={(e, node) => {
+          setGlobalField('ui', { ...global.ui, selected_node_id: node.id });
+        }}
+        onPaneClick={() => {
+          setGlobalField('ui', { ...global.ui, selected_node_id: -1 });
+        }}
 
-        // panBoundary={panBounds}
-        // nodeExtent={[[0, 0], [300, 500]]} // min and max canvas coords
 
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        // fitViewOptions={{ padding: 0.2 }}
       >
-         <Controls showInteractive={true} />
+          <defs>
+            <marker
+              id="arrowhead"
+              markerWidth="8"
+              markerHeight="8"
+              refX="8"
+              refY="4"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <path d="M0,0 L8,4 L0,8" fill="#000" />
+            </marker>
+          </defs>
+        <Controls showInteractive={true} />
         <Background />
       </ReactFlow>
     </div>

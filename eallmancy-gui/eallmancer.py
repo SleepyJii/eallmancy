@@ -3,7 +3,8 @@ from typing import Optional
 from base.config import Config
 import multiprocessing
 from multiprocessing import Lock
-
+from multiprocessing import Manager
+import os
 from eallmancy.engine.problem_specs import EvolveGitSpec
 from algorithms.eoh_git import eoh as eohgit, engine as eohgit_engine
 from eallmancy.engine.engine_trace import EngineTrace
@@ -16,11 +17,13 @@ from eallmancy.evaluation.git_disk_utils import replace_evolve_marked_sections
 
 
 class LiveTargetUpdater:
-    def __init__(self, ps, overwrite, tracelock):
+    def __init__(self, ps, overwrite, _mancer_shared, _mancer_timestamp, tracelock):
         self._tracelock = tracelock
         self.best_score = float('inf')
-        self.latest_trace = None
-        self.latest_timestamp = datetime.utcnow().timestamp()
+        self._shared = _mancer_shared
+        self._shared["_latest_trace"] = None
+        self._last_timestamp = _mancer_timestamp
+        self._last_timestamp.value = datetime.utcnow().timestamp()
         self.overwrite = overwrite
         if self.overwrite:
             self.evolve_fp = ps.file_to_evolve
@@ -29,8 +32,8 @@ class LiveTargetUpdater:
 
     def hook(self, latest_trace):
         with self._tracelock:
-            self.latest_timestamp = datetime.utcnow().timestamp()
-            self.latest_trace = latest_trace
+            self._last_timestamp.value = datetime.utcnow().timestamp()
+            self._shared["_latest_trace"] = latest_trace.graph
         new_arte = latest_trace.list[-1]
         if issubclass(type(new_arte), MultiPartSolution):
             if new_arte.fitness < self.best_score:
@@ -51,18 +54,21 @@ class Eallmancer:
         self._is_running = multiprocessing.Value('b', False)
         self._stop_event = multiprocessing.Event()
         self._liveupdater = None
-        self._last_trace = None
+
+        self._manager = Manager()
+        self._shared = self._manager.dict()
+        self._shared["_latest_trace"] = None
         self._tracelock = Lock()
         self._servlock = Lock()
-        self._stale_timestamp = datetime.utcnow().timestamp()
+        self._last_timestamp = multiprocessing.Value('d', datetime.utcnow().timestamp())  
 
     def run(self, config: Config):
         with self._servlock:
             if self._is_running.value:
+                print('EALLMancer already running something', self._is_running.value)
                 return
             self._stop_event.clear()
             self._liveupdater = None
-            self._last_trace = None
             self._process = multiprocessing.Process(target=self._run_task, args=(config,))
             self._is_running.value = True
             self._process.start()
@@ -70,6 +76,7 @@ class Eallmancer:
     def stop(self):
         with self._servlock:
             if not self._is_running.value:
+                print('EALLMancer isnt running something')
                 return
             self._stop_event.set()
             self._process.join()
@@ -77,41 +84,49 @@ class Eallmancer:
 
     def _run_task(self, config: Config):
         print("DOING EALLMANCY")
-        if config.algorithm == 'EOH_git':
+
+        try:
             ps = EvolveGitSpec(
                 config.description,
                 config.repoPath,
                 config.evalScript
             )
-            self._liveupdater = LiveTargetUpdater(ps, config.overwrite)
-            eohgit_engine.hooks = [self._liveupdater.hook]
-            res = eohgit(
-                problem_spec=ps,
-                n_workers=1
-            )
-        else:
-            raise Exception(f"Unknown algorithm {config.algorithm}")
+            self._liveupdater = LiveTargetUpdater(ps, config.overwrite, self._shared, self._last_timestamp, self._tracelock)
+
+            if config.algorithm == 'EOH_git':
+                
+                eohgit_engine.hooks = [self._liveupdater.hook]
+                res = eohgit(
+                    problem_spec=ps,
+                    api_spec=dict(
+                        host="api.openai.com",
+                        key=os.environ.get('OPENAI_API_KEY'),
+                        model="gpt-4o-mini",
+                        timeout=20
+                    ),
+                    n_workers=1
+                )
+            else:
+                raise Exception(f"Unknown algorithm {config.algorithm}")
+        except Exception as e:
+            print(e)
+        
         with self._servlock:
             with self._tracelock:  # leave trace in clean state after completion
-                self._last_trace = self._liveupdater.latest_trace
-                self._stale_timestamp = datetime.utcnow().timestamp()
-                self._liveupdater = None
+                if self._liveupdater is not None:
+                    self._last_timestamp.value = datetime.utcnow().timestamp()
+                    self._liveupdater = None
+        self._is_running.value = False
 
     def get_trace_timestamp(self):
         with self._servlock:
-            if self._liveupdater is None:
-                return self._stale_timestamp
             with self._tracelock:
-                return self._liveupdater.latest_timestamp
+                return self._last_timestamp.value
 
     def get_trace(self) -> Optional[EngineTrace]:
         with self._servlock:
             with self._tracelock:
-                if self._liveupdater is None:
-                    return self._last_trace
-                if self._liveupdater.latest_trace is not None:
-                    self._last_trace = self._liveupdater.latest_trace.copy()
-                return self._last_trace
+                return self._shared["_latest_trace"]
 
     @property
     def is_running(self):
@@ -122,4 +137,10 @@ class Eallmancer:
     def has_trace(self):
         with self._servlock:
             with self._tracelock:
-                return self._is_running.value or self._last_trace is not None
+                return self._is_running.value or self._shared["_latest_trace"] is not None
+
+    @property
+    def trace_is_live(self):
+        with self._servlock:
+            with self._tracelock:
+                return self._is_running.value

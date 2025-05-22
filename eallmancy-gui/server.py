@@ -16,15 +16,30 @@ from base.config import Config
 from eallmancer import Eallmancer
 from eallmancy.engine.engine_trace import EngineTrace
 
+import signal
+import sys
 from datetime import datetime
 from collections import defaultdict
 import networkx as nx
 import numpy as np
 
 
+# TODO: THIS IS ULTRA HACKY, PUT API SETTINGS IN CONTROL PANEL
+import os
+with open('/root/openai_api_key') as f:
+    os.environ['OPENAI_API_KEY'] = f.read().replace('\n','')
+
+
 app = FastAPI()
 
-app.state.config = None
+_ALGOS = ["EOH_git"]
+app.state.config = Config(**{
+    'repoPath': '/root/eallmancy',
+    'evalScript': '/root/eallmancy/test_gitdiff.py',
+    'description': 'The `heuristics` function takes as input a distance matrix, and returns prior indicators of how promising it is to include each edge in a solution. The return is of the same shape as the input.',
+    'algorithm': _ALGOS[0],
+    'overwrite': True
+}) # None
 app.state.config_updated_timestamp = datetime.utcnow().timestamp()
 app.state.eallmancer = Eallmancer()
 
@@ -34,9 +49,29 @@ app.mount("/static", StaticFiles(directory="frontend/build/static"), name="stati
 
 
 
+def cleanup_on_exit():
+    worker = getattr(app.state.eallmancer, "_process", None)
+    if worker and worker.is_alive():
+        print("Terminating subprocess...")
+        worker.terminate()
+        worker.join()
+        print("Subprocess terminated.")
+
+# On SIGINT or SIGTERM, clean up
+def handle_exit_signal(signum, frame):
+    print(f"Signal {signum} received, shutting down.")
+    cleanup_on_exit()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, handle_exit_signal)
+signal.signal(signal.SIGTERM, handle_exit_signal)
+
+
+
+
+
 ## CONFIG STUFF
 
-_ALGOS = ["EOH_git"]
 
 @app.get("/api/config/algorithms")
 def get_algorithms():
@@ -132,6 +167,7 @@ def get_status():
         "has_config": app.state.config is not None,
         "is_running": app.state.eallmancer.is_running,
         "has_trace": app.state.eallmancer.has_trace,
+        "trace_is_live": app.state.eallmancer.trace_is_live
     }
 
 def _add_graph_positioning(gr):
@@ -140,14 +176,14 @@ def _add_graph_positioning(gr):
         cgraph = gr.subgraph(cgraph_nodes)
         
         for node in cgraph.nodes:
-            gr.nodes[node]['Yrank'] = np.nan
+            gr.nodes[node]['Yrank'] = -1
 
         longest_path = nx.dag_longest_path(cgraph)
         for nidx, nn in enumerate(longest_path):
             gr.nodes[nn]['Yrank'] = nidx
 
         for node in cgraph.nodes:
-            if gr.nodes[node]['Yrank'] is not np.nan:
+            if gr.nodes[node]['Yrank'] != -1:
                 continue
             for nidx, nn in enumerate(longest_path):
                 if nx.has_path(cgraph, nn, node):
@@ -170,12 +206,15 @@ def stringify_artid(idx: int):
 
 def _jsonify_art(ndd):
     art = ndd['artifact']
-    js = dict(id = stringify_artid(art.trace_id), type=str(type(art)))
+    js = dict(id = stringify_artid(art.trace_id), artifact_type=str(type(art)).replace("<class '", "").replace("'>",""))
     if art.evaluation is not None:
-        js['evaluation'] = str(art.evaluation)
+        js['evaluation'] = {'fitness': str(art.evaluation.fitness), 'errors': str(art.evaluation.errors)}
     if hasattr(art, 'solution_part_strs'):
         js['solution_parts'] = art.solution_part_strs
     js['position'] = {'x_rank': ndd['Xrank'], 'y_rank': ndd['Yrank']}
+    js['artifact_repr'] = str(art)
+    js['raw_response'] = art.raw_resp
+    js['raw_prompt'] = art.raw_query
     return js
 
 def _jsonify_edge(edg):
@@ -184,26 +223,36 @@ def _jsonify_edge(edg):
 
 @app.get("/api/view/trace")
 def get_trace():
-    if not app.state.eallmancer.has_trace:
-        return { # default empty trace
+
+    _empty_trace = { # default empty trace
             "timestamp": datetime.utcnow().timestamp(),
             "graph": {"nodes": [], "edges": []},
         }
+
+    # TODO: uncomment after testing
+    if not app.state.eallmancer.has_trace:
+        return _empty_trace
     
-    trace: EngineTrace = app.state.eallmancer.get_trace()
-    enh_graph = _add_graph_positioning(trace.graph)
+    tracegraph = app.state.eallmancer.get_trace()
+    if tracegraph is None:
+        return _empty_trace
+    
+    # trace: EngineTrace = EngineTrace.load('/root/example_trace.pk')
+
+    enh_graph = _add_graph_positioning(tracegraph)
 
     # we need to parse the trace as GUI-friendly JSON
     _nodes = [_jsonify_art(ndd) for _, ndd in enh_graph.nodes(data=True)]
     _edges = [_jsonify_edge(edg) for edg in enh_graph.edges]
     
-    return {
+    res = {
         "timestamp": datetime.utcnow().timestamp(),
         "graph": {"nodes": _nodes, "edges": _edges},
     }
+    return res
 
 
-
+# everything else should just open the main landing page
 @app.get("/{full_path:path}", response_class=HTMLResponse)
 def serve_react_catchall(full_path: str):
     with open("frontend/build/index.html") as f:
