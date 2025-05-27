@@ -141,10 +141,10 @@ class EngineV3:
 
         artifact: Artifact = (
             arte_class(
-                query=prompt,
                 response=resp_txt_raw,
                 id=0 if self.trace is None else self.trace.new_id()
             )
+            .set_query(prompt)
         )
 
         if issubclass(arte_class, MultiPartSolution):

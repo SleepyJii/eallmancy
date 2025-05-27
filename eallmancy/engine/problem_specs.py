@@ -41,9 +41,9 @@ class EvolveGitSpec(ProblemSpec):
         
     def _resolve(self):
         self.validate_paths()
-        # print('looking for evolve marked files within', self.git_path)
         _fte = find_evolve_marked_files(self.git_path)
-        # print('found', _fte)
+        if len(_fte) == 0:
+            raise Exception(f"No file-to-evolve markings found within repo {self.git_path}")
         self._file_to_evolve = _fte[0]
         self._section_templates = find_evolve_marked_file_sections(self._file_to_evolve)
         self._template = '\n\n'.join(self._section_templates)

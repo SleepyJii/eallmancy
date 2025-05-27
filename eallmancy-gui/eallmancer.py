@@ -57,7 +57,9 @@ class Eallmancer:
 
         self._manager = Manager()
         self._shared = self._manager.dict()
-        self._shared["_latest_trace"] = None
+        #precached_trace: EngineTrace = EngineTrace.load('/root/example_trace.pk')
+        precached_trace: EngineTrace = EngineTrace.load('/root/poetry_example_trace.pk')
+        self._shared["_latest_trace"] = precached_trace.graph
         self._tracelock = Lock()
         self._servlock = Lock()
         self._last_timestamp = multiprocessing.Value('d', datetime.utcnow().timestamp())  
@@ -75,11 +77,14 @@ class Eallmancer:
     
     def stop(self):
         with self._servlock:
+            if self._process is not None:
+                self._stop_event.set()
+                self._process.terminate()
+                self._process.join()
+
             if not self._is_running.value:
                 print('EALLMancer isnt running something')
                 return
-            self._stop_event.set()
-            self._process.join()
             self._is_running.value = False
 
     def _run_task(self, config: Config):

@@ -33,13 +33,14 @@ with open('/root/openai_api_key') as f:
 app = FastAPI()
 
 _ALGOS = ["EOH_git"]
-app.state.config = Config(**{
-    'repoPath': '/root/eallmancy',
-    'evalScript': '/root/eallmancy/test_gitdiff.py',
-    'description': 'The `heuristics` function takes as input a distance matrix, and returns prior indicators of how promising it is to include each edge in a solution. The return is of the same shape as the input.',
-    'algorithm': _ALGOS[0],
-    'overwrite': True
-}) # None
+# app.state.config = Config(**{
+#     'repoPath': '/root/eallmancy',
+#     'evalScript': '/root/eallmancy/test_evaluate.sh',
+#     'description': 'The `heuristics` function takes as input a distance matrix, and returns prior indicators of how promising it is to include each edge in a solution. The return is of the same shape as the input.',
+#     'algorithm': _ALGOS[0],
+#     'overwrite': True
+# }) # None
+app.state.config = None
 app.state.config_updated_timestamp = datetime.utcnow().timestamp()
 app.state.eallmancer = Eallmancer()
 
@@ -116,6 +117,7 @@ def submit_config(config: Config):
     
     app.state.config = config
     app.state.config_updated_timestamp = datetime.utcnow().timestamp()
+
     print("CONFIG SET SUCCESSFULLY:", config)
     return {"status": "success"}
 
@@ -133,7 +135,7 @@ def start_evolve():
 
 @app.post("/api/control/stop_evolve")
 def stop_evolve():
-    if not app.state.is_running:
+    if not app.state.eallmancer.is_running:
         raise HTTPException(status_code=400, details={'invalid': 'engine is not running'})
     print("EALLMancy STOPPING")
     app.state.eallmancer.stop()
@@ -171,29 +173,29 @@ def get_status():
     }
 
 def _add_graph_positioning(gr):
-    components = list()
-    for cgraph_nodes in nx.weakly_connected_components(gr):
-        cgraph = gr.subgraph(cgraph_nodes)
-        
-        for node in cgraph.nodes:
-            gr.nodes[node]['Yrank'] = -1
 
-        longest_path = nx.dag_longest_path(cgraph)
-        for nidx, nn in enumerate(longest_path):
-            gr.nodes[nn]['Yrank'] = nidx
+    srtd_nodes = list(sorted(list(gr.nodes(data=True)), key=lambda nt: nt[1]['artifact'].timestamp))
 
-        for node in cgraph.nodes:
-            if gr.nodes[node]['Yrank'] != -1:
-                continue
-            for nidx, nn in enumerate(longest_path):
-                if nx.has_path(cgraph, nn, node):
-                    length = nx.shortest_path_length(cgraph, source=nn, target=node)
-                    gr.nodes[node]['Yrank'] = nidx + length
-                    break
-                elif nx.has_path(cgraph, node, nn):
-                    length = nx.shortest_path_length(cgraph, source=node, target=nn)
-                    gr.nodes[node]['Yrank'] = nidx - length
-                    break
+    for node in gr.nodes:
+        gr.nodes[node]['Yrank'] = -1
+    
+    _MAX_ROW_WIDTH = 4
+    _last_maxed_row = -1
+    _row_satur = defaultdict(lambda : 0)
+    _last_row = -1
+    for nid, ndd in srtd_nodes:
+        # must be after all parents
+        _max_parent_yrank = max([gr.nodes[parent]['Yrank'] for parent in gr.predecessors(nid)] + [-1])
+
+        # must also be after all maxed out rows
+        new_rank = max(_last_maxed_row + 1, _max_parent_yrank + 1, _last_row)
+
+        _row_satur[new_rank] += 1
+        if _row_satur[new_rank] == _MAX_ROW_WIDTH:
+            _last_maxed_row = new_rank
+
+        gr.nodes[nid]['Yrank'] = new_rank
+        _last_row = new_rank
         
     n_r = defaultdict(lambda : 0)
     for nidx, ndd in gr.nodes(data=True):
@@ -201,14 +203,34 @@ def _add_graph_positioning(gr):
         n_r[ndd['Yrank']] += 1
     return gr
 
+
+def _add_fitness_rank(gr):
+    
+    srtd_nodes = list(sorted(list(gr.nodes(data=True)), key=lambda nt: nt[1]['artifact'].fitness))
+    # srtd_nodes = [x for x in srtd_nodes if x[1]['fitness'] is not np.nan]
+    # nan_nodes = [x for x in srtd_nodes if x[1]['fitness'] is not np.nan]
+    idx = -1
+    last_val = None
+    for _, n in enumerate(srtd_nodes):
+        this_val = gr.nodes[n[0]]['artifact'].fitness
+        if last_val != this_val:
+            idx += 1
+        gr.nodes[n[0]]['fitness_rank'] = idx
+        last_val = this_val
+    
+    return gr
+
+
 def stringify_artid(idx: int):
     return f'A{idx}'
 
 def _jsonify_art(ndd):
     art = ndd['artifact']
+    art.evaluation.fitness *= -1
     js = dict(id = stringify_artid(art.trace_id), artifact_type=str(type(art)).replace("<class '", "").replace("'>",""))
     if art.evaluation is not None:
-        js['evaluation'] = {'fitness': str(art.evaluation.fitness), 'errors': str(art.evaluation.errors)}
+        # TODO: handle min vs maximization in a better way
+        js['evaluation'] = {'fitness': str(art.evaluation.fitness), 'fitness_rank': str(ndd['fitness_rank']), 'errors': str(art.evaluation.errors)}
     if hasattr(art, 'solution_part_strs'):
         js['solution_parts'] = art.solution_part_strs
     js['position'] = {'x_rank': ndd['Xrank'], 'y_rank': ndd['Yrank']}
@@ -237,9 +259,10 @@ def get_trace():
     if tracegraph is None:
         return _empty_trace
     
-    # trace: EngineTrace = EngineTrace.load('/root/example_trace.pk')
+   
 
     enh_graph = _add_graph_positioning(tracegraph)
+    enh_graph = _add_fitness_rank(enh_graph)
 
     # we need to parse the trace as GUI-friendly JSON
     _nodes = [_jsonify_art(ndd) for _, ndd in enh_graph.nodes(data=True)]

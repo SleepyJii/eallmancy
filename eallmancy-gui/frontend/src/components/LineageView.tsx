@@ -26,20 +26,39 @@ import {
 } from '@xyflow/react';
 
 
-
-function getFitnessColor(value, min, max) {
-  const _v = parseFloat(value);
-  const t = (_v - min) / (max - min); // normalize to [0, 1]
-
-  if (isNaN(t)) return '#000'; // nan → black
-
-  // Green (low) → Yellow (mid) → Red (high)
-  const r = Math.round(255 * t);
-  const g = Math.round(255 * (1 - t));  // peak green at t = 0.5
-  const b = 0;
-
-  return `rgb(${r}, ${g}, ${b})`;
+function lerp(a, b, t) {
+  return a + (b - a) * t;
 }
+
+function interpolateColor(c1, c2, t) {
+  return [
+    Math.round(lerp(c1[0], c2[0], t)),
+    Math.round(lerp(c1[1], c2[1], t)),
+    Math.round(lerp(c1[2], c2[2], t)),
+  ];
+}
+
+function getFitnessColor(value, value_rank, min, max) {
+  const v = parseFloat(value_rank);
+  if (isNaN(parseFloat(value))) return '#000';
+
+  const t = (v - min) / (max - min); // normalize to [0, 1]
+  const _LOW_COLOR  = [0, 128, 0];     // green
+  const _MID_COLOR  = [224, 150, 31];   // yellow
+  const _HIGH_COLOR = [220, 20, 60];   // crimson/red
+
+  let color;
+  if (t <= 0.5) {
+    const localT = t / 0.5; // [0, 0.5] → [0, 1]
+    color = interpolateColor(_LOW_COLOR, _MID_COLOR, localT);
+  } else {
+    const localT = (t - 0.5) / 0.5; // (0.5, 1] → [0, 1]
+    color = interpolateColor(_MID_COLOR, _HIGH_COLOR, localT);
+  }
+
+  return `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+}
+
 
 
 export const GLOW_COLOR = '#111'; // or any color you want
@@ -53,7 +72,7 @@ function DotNode({ data, selected }) {
   const minFitness = useGlobalStore(state => state.global.ui.min_fitness);
   const maxFitness = useGlobalStore(state => state.global.ui.max_fitness);
 
-  const color = getFitnessColor(data.evaluation.fitness, minFitness, maxFitness);
+  const color = getFitnessColor(data.evaluation.fitness, data.evaluation.fitness_rank, minFitness, maxFitness);
 
   return (
     <div
@@ -107,7 +126,7 @@ function BezierGlowEdge({ id, source, target, sourceX, sourceY, targetX, targetY
   });
 
   return (
-    <>
+    
       <BaseEdge
         id={id}
         path={edgePath}
@@ -117,7 +136,7 @@ function BezierGlowEdge({ id, source, target, sourceX, sourceY, targetX, targetY
         }}
         markerEnd="url(#arrowhead)"
       />
-    </>
+    
   );
 }
 
@@ -137,6 +156,7 @@ const nodeTypes = {
 export default function LineageView() {
   const global = useGlobalStore(state => state.global);
   const setGlobalField = useGlobalStore(state => state.setField);
+  const traceTimestamp = useGlobalStore(state => state.global.trace.timestamp);
 
 
   const handleNodeClick = useCallback((event, node) => {
@@ -161,7 +181,7 @@ export default function LineageView() {
       data: node,
       ...defaultNodeProps,
     }));
-  }, [traceGraph.nodes]);
+  }, [traceTimestamp]);
 
   // const edges = traceGraph.edges.map((edge, i) => ({
   //   id: `e${i}`,
@@ -177,14 +197,14 @@ export default function LineageView() {
       target: edge.target,
       type: 'smooth',
     }));
-  }, [traceGraph.edges]);
+  }, [traceTimestamp]);
 
   // color calcs
   useEffect(() => {
     const nodes = useGlobalStore.getState().global.trace.graph.nodes;
     if (!nodes || nodes.length === 0) return;
     const fitnessValues = nodes
-      .map(n => parseFloat(n.evaluation.fitness))
+      .map(n => parseFloat(n.evaluation.fitness_rank))
       .filter(val => !isNaN(val));
 
     if (fitnessValues.length > 0) {

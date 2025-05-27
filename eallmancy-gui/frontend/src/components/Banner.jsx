@@ -35,11 +35,14 @@ function EngineIndicator({ status }) {
   );
 }
 
-function TraceIndicator({ status }) {
+function TraceIndicator({ status, traceNodes }) {
   let label = 'NoTrace';
   let color = '#888';
-
-  if (status.trace_is_live) {
+  console.log('indicator sees nodelen', traceNodes.length);
+  if (status.trace_is_live && traceNodes.length == 0) {
+    label = 'Waiting';
+    color = '#adb300';
+  } else if (status.trace_is_live) {
     label = 'LiveTrace';
     color = '#044bbd';
   } else if (status.has_trace) {
@@ -83,6 +86,8 @@ export default function Banner() {
   const global = useGlobalStore(state => state.global);
   const isReady = global.status.has_config && !global.status.is_running;
   const isRunning = global.status.is_running;
+
+  const traceNodes = useGlobalStore(state => state.global.trace.graph.nodes);
 
 
   const handleStart = () => {
@@ -130,7 +135,7 @@ export default function Banner() {
         <BannerButton label="START" enabled={isReady} onClick={handleStart} />
         <BannerButton label="STOP" enabled={isRunning} onClick={handleStop} />
         <EngineIndicator status={global.status} />
-        <TraceIndicator  status={global.status} />
+        <TraceIndicator  status={global.status} trace={traceNodes}/>
       </div>
     </div>
   );
