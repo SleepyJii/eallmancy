@@ -9,6 +9,7 @@ from eallmancy.engine.problem_specs import EvolveGitSpec
 from algorithms.eoh_git import eoh as eohgit, engine as eohgit_engine
 from eallmancy.engine.engine_trace import EngineTrace
 from datetime import datetime
+import asyncio
 
 # should make this a clean, abstracted, multiproc worker
 
@@ -30,10 +31,16 @@ class LiveTargetUpdater:
             with open(self.evolve_fp, 'r') as f:
                 self._content = f.read()
 
+    async def inform_new_trace(self):
+        await self._shared['serv_msg_q'].put(dict(msg_type='GET_TIMESTAMPS')) 
+
     def hook(self, latest_trace):
         with self._tracelock:
             self._last_timestamp.value = datetime.utcnow().timestamp()
             self._shared["_latest_trace"] = latest_trace.graph
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.inform_new_trace())
         new_arte = latest_trace.list[-1]
         if issubclass(type(new_arte), MultiPartSolution):
             if new_arte.fitness < self.best_score:
@@ -49,7 +56,7 @@ class LiveTargetUpdater:
 
 
 class Eallmancer:
-    def __init__(self):
+    def __init__(self, serv_msg_q):
         self._process = None
         self._is_running = multiprocessing.Value('b', False)
         self._stop_event = multiprocessing.Event()
@@ -58,11 +65,12 @@ class Eallmancer:
         self._manager = Manager()
         self._shared = self._manager.dict()
         #precached_trace: EngineTrace = EngineTrace.load('/root/example_trace.pk')
-        precached_trace: EngineTrace = EngineTrace.load('/root/poetry_example_trace.pk')
-        self._shared["_latest_trace"] = precached_trace.graph
+        # precached_trace: EngineTrace = EngineTrace.load('/root/poetry_example_trace.pk')
+        self._shared["_latest_trace"] = None #precached_trace.graph
+        self._shared['serv_msg_q'] = serv_msg_q
         self._tracelock = Lock()
         self._servlock = Lock()
-        self._last_timestamp = multiprocessing.Value('d', datetime.utcnow().timestamp())  
+        self._last_timestamp = multiprocessing.Value('d', datetime.utcnow().timestamp())
 
     def run(self, config: Config):
         with self._servlock:

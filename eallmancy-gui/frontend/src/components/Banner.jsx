@@ -3,6 +3,7 @@
 
 import { Link } from 'react-router-dom';
 import { useGlobalStore } from '../state/globalStore';
+import { startEvolution, askTimestamps, stopEvolution } from '../connection/SocketManager';
 
 
 function EngineIndicator({ status }) {
@@ -53,6 +54,7 @@ function TraceIndicator({ status, traceNodes }) {
   return (
     <div style={{
       marginLeft: '20px',
+      marginRight: '20px',
       padding: '4px 10px',
       borderRadius: '8px',
       backgroundColor: color,
@@ -91,23 +93,11 @@ export default function Banner() {
 
 
   const handleStart = () => {
-    fetch('/api/control/start_evolve', { method: 'POST' })
-      .then(res => {
-        if (!res.ok) throw new Error('Start failed');
-        return res.json();
-      })
-      .then(() => console.log('Started'))
-      .catch(err => console.error(err));
+    startEvolution();
   };
 
   const handleStop = () => {
-    fetch('/api/control/stop_evolve', { method: 'POST' })
-      .then(res => {
-        if (!res.ok) throw new Error('Stop failed');
-        return res.json();
-      })
-      .then(() => console.log('Stopped'))
-      .catch(err => console.error(err));
+    stopEvolution();
   };
 
   return (
@@ -135,7 +125,8 @@ export default function Banner() {
         <BannerButton label="START" enabled={isReady} onClick={handleStart} />
         <BannerButton label="STOP" enabled={isRunning} onClick={handleStop} />
         <EngineIndicator status={global.status} />
-        <TraceIndicator  status={global.status} trace={traceNodes}/>
+        <TraceIndicator  status={global.status} traceNodes={traceNodes}/>
+        <BannerButton label="refresh" enabled={true} onClick={askTimestamps} />
       </div>
     </div>
   );

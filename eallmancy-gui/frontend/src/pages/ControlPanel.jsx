@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useConfigStore } from '../state/configStore';
 import { useGlobalStore } from '../state/globalStore';
 
+import { submitConfig, askAlgos } from '../connection/SocketManager';
 
 // function EalllmancerControlPanel() {
 //   const global = useGlobalStore(state => state.config);
@@ -50,18 +51,9 @@ export default function ControlPanel() {
     overwrite: 'valid',
   });
 
-  const [algorithmOptions, setAlgorithmOptions] = useState(['loading...']);
-
-  useEffect(() => {
-    fetch('/api/config/algorithms')
-      .then(res => res.json())
-      .then(data => {
-        setAlgorithmOptions(data);
-        setConfigField('algorithm', data[0]);
-      })
-      .catch(() => setAlgorithmOptions(['error']));
-  }, []);
-
+  if (config.algos.length == 0) {
+    askAlgos();
+  }
 
   const handleChange = (field, value) => {
     setConfigField(field, value);
@@ -84,15 +76,7 @@ export default function ControlPanel() {
     if (!allValid) return;
 
     console.log('Final config:', config);
-    {
-      fetch('/api/config/submit', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(config) })
-      .then(res => {
-        if (res.ok) {
-          setGlobalField('has_config', true);
-        }
-      })
-      // .catch(() => ERRORALERT)
-    };
+    submitConfig(JSON.stringify(config));
   };
 
   return (
@@ -137,7 +121,7 @@ export default function ControlPanel() {
               value={config.algorithm}
               onChange={e => handleChange('algorithm', e.target.value)}
             >
-              {algorithmOptions.map(opt => (
+              {config.algos.map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
