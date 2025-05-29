@@ -1,6 +1,6 @@
 // src/pages/TraceView.jsx
-import LineageView from '../components/LineageView.tsx';
-import NodeInspectorView from '../components/NodeInspectorView.tsx'
+import LineageView from '../components/traceview/LineageView.tsx';
+import NodeInspectorView from '../components/traceview/NodeInspectorView.tsx'
 
 export default function TraceView() {
   return (

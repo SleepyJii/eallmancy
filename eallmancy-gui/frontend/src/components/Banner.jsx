@@ -3,6 +3,7 @@
 
 import { Link } from 'react-router-dom';
 import { useGlobalStore } from '../state/globalStore';
+import { useConfigStore } from '../state/configStore';
 import { startEvolution, askTimestamps, stopEvolution } from '../connection/SocketManager';
 
 
@@ -17,8 +18,8 @@ function EngineIndicator({ status }) {
     label = 'Running';
     color = '#029909';
   } else if (status.has_trace & !status.is_running) {
-    label = 'Finished';
-    color = '#006e05';
+    label = 'Standby';
+    color = '#ad7005';
   }
 
   return (
@@ -36,12 +37,15 @@ function EngineIndicator({ status }) {
   );
 }
 
-function TraceIndicator({ status, traceNodes }) {
+function TraceIndicator({ status, configTime, traceTime, traceNodes }) {
   let label = 'NoTrace';
   let color = '#888';
-  console.log('indicator sees nodelen', traceNodes.length);
+  console.log('indicator sees nodelen', status, configTime, traceTime, traceNodes.length);
   if (status.trace_is_live && traceNodes.length == 0) {
     label = 'Waiting';
+    color = '#adb300';
+  } else if (traceTime < configTime) {
+    label = 'StaleTrace';
     color = '#adb300';
   } else if (status.trace_is_live) {
     label = 'LiveTrace';
@@ -89,7 +93,11 @@ export default function Banner() {
   const isReady = global.status.has_config && !global.status.is_running;
   const isRunning = global.status.is_running;
 
-  const traceNodes = useGlobalStore(state => state.global.trace.graph.nodes);
+  const trace = useGlobalStore(state => state.global.trace);
+  const traceNodes = trace.graph.nodes;
+  const traceTime = trace.timestamp;
+  const config = useGlobalStore(state => state.global.config);
+  const configTime = config.timestamp;
 
 
   const handleStart = () => {
@@ -125,7 +133,7 @@ export default function Banner() {
         <BannerButton label="START" enabled={isReady} onClick={handleStart} />
         <BannerButton label="STOP" enabled={isRunning} onClick={handleStop} />
         <EngineIndicator status={global.status} />
-        <TraceIndicator  status={global.status} traceNodes={traceNodes}/>
+        <TraceIndicator  status={global.status} configTime={configTime} traceTime={traceTime} traceNodes={traceNodes}/>
         <BannerButton label="refresh" enabled={true} onClick={askTimestamps} />
       </div>
     </div>

@@ -1,156 +1,77 @@
-// src/pages/Config.jsx
+// src/pages/ControlPanel.jsx
 import { useState, useEffect, useRef } from 'react';
-import { useConfigStore } from '../state/configStore';
 import { useGlobalStore } from '../state/globalStore';
 
 import { submitConfig, askAlgos } from '../connection/SocketManager';
 
-// function EalllmancerControlPanel() {
-//   const global = useGlobalStore(state => state.config);
-//   const setGlobalField = useGlobalStore(state => state.setField);
+import { GitProblemPanel } from '../components/controlpanel/GitProblemPanel';
+import { ThinkHardProblemPanel } from '../components/controlpanel/ThinkHardProblemPanel';
 
-//   return (
-//     <div>
 
-//         <button
-//           // onClick={handleSubmit}
-//           // disabled={!allValid}
-//           style={{ fontSize: '1.2em', padding: '10px 20px' }}
-//         >
-//           START
-//         </button>
-//         <p/>
-//         <button
-//           // onClick={handleSubmit}
-//           // disabled={!allValid}
-//           style={{ fontSize: '1.2em', padding: '10px 20px' }}
-//         >
-//           STOP
-//         </button>
 
-//     </div>
-//   )
-// }
+function ModeSelector({ selected, onChange }) {
+  const modes = ['GitDiff', 'ThinkHard'];
+
+  return (
+    <div style={{
+      display: 'flex',
+      border: '1px solid #ccc',
+      borderRadius: '8px',
+      overflow: 'hidden',
+      width: 'fit-content'
+    }}>
+      {modes.map(mode => (
+        <button
+          key={mode}
+          onClick={() => onChange(mode)}
+          style={{
+            padding: '8px 20px',
+            backgroundColor: selected === mode ? '#1c1c1c' : '#f5f5f5',
+            color: selected === mode ? 'white' : '#555',
+            border: 'none',
+            cursor: 'pointer',
+            fontWeight: selected === mode ? 'bold' : 'normal'
+          }}
+        >
+          {mode}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ModeAwareProblemPanel({mode}) {
+  if (mode == "GitDiff") {
+    return <GitProblemPanel/>;
+  } else if (mode == "ThinkHard") {
+    return <ThinkHardProblemPanel/>;
+  } else {
+    return <div> UNKNOWN MODE SELECTED </div>
+  }
+
+}
 
 
 export default function ControlPanel() {
 
 
-  const config = useConfigStore(state => state.config);
-  const setConfigField = useConfigStore(state => state.setField);
   const global = useGlobalStore(state => state.global);
   const setGlobalField = useGlobalStore(state => state.setField);
 
   const configRegisteredRef = useRef(global.status.has_config);
+  const [mode, setMode] = useState('GitDiff');
 
-  const [validation, setValidation] = useState({
-    repoPath: 'valid',
-    evalScript: 'valid',
-    description: 'valid',
-    algorithm: 'valid',
-    overwrite: 'valid',
-  });
-
-  if (config.algos.length == 0) {
-    askAlgos();
-  }
 
   const handleChange = (field, value) => {
-    setConfigField(field, value);
-  };
-
-  const handleCheckbox = (field, checked) => {
-    setConfigField(field, checked);
-  };
-
-  const allValid = Object.values(validation).every(v => v === 'valid');
-
-  const borderStyle = field =>
-    validation[field] === 'invalid'
-      ? '2px solid red'
-      : validation[field] === 'pending'
-      ? '2px dashed orange'
-      : undefined;
-
-  const handleSubmit = () => {
-    if (!allValid) return;
-
-    console.log('Final config:', config);
-    submitConfig(JSON.stringify(config));
+    console.log('setting',field,'to',value)
+    setGlobalField(field, value);
   };
 
   return (
-    <div style={{ padding: '20px', width: 'min(40%, 600px)' }}>
-
-      <div>
-        <label>Git Repo Path:</label><br />
-        <input
-          type="text"
-          value={config.repoPath}
-          onChange={e => handleChange('repoPath', e.target.value)}
-          style={{ border: borderStyle('repoPath'), width: '400px' }}
-          placeholder="/path/to/evolve/target/gitrepo"
-        /><br /><br />
-
-        <label>Eval Script Path:</label><br />
-        <input
-          type="text"
-          value={config.evalScript}
-          onChange={e => handleChange('evalScript', e.target.value)}
-          style={{ border: borderStyle('evalScript'), width: '400px' }}
-          placeholder="/path/to/eval/script.sh"
-        /><br /><br />
-
-        <label>Problem Description:</label><br />
-        <textarea
-          value={config.description}
-          onChange={e => handleChange('description', e.target.value)}
-          rows={4}
-          cols={60}
-          style={{ border: borderStyle('description') }}
-          placeholder="We want to edit these sections of code to maximize a real-valued black box criteria"
-        /><br />
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '70px', marginTop: '20px' }}>
-
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '40px' }}>
-          <div>
-            <label>Algorithm</label><br />
-            <select
-              value={config.algorithm}
-              onChange={e => handleChange('algorithm', e.target.value)}
-            >
-              {config.algos.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label>LiveOverwrite</label><br />
-            <input
-              type="checkbox"
-              checked={config.overwrite}
-              onChange={e => handleCheckbox('overwrite', e.target.checked)}
-            />
-          </div>
-
-        </div>
-
-        <button
-          onClick={handleSubmit}
-          disabled={!allValid}
-          style={{ fontSize: '1.2em', padding: '10px 20px' }}
-        >
-          Confirm
-        </button>
-      </div>
-
-      {/* <div disabled={configRegisteredRef}>
-        <hr class="default"></hr>
-        <EalllmancerControlPanel/>
-      </div> */}
+    <div>
+      <ModeSelector selected={global.ui.selected_algo_type} 
+              onChange={e => handleChange('global.ui.selected_algo_type', e)} />
+      <ModeAwareProblemPanel mode={global.ui.selected_algo_type}/>
     </div>
 
   );

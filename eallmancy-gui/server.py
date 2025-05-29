@@ -14,8 +14,8 @@ from pydantic import BaseModel
 from pathlib import Path
 from typing import Optional
 from base.config import Config
-from backend.eallmancer import Eallmancer
-from eallmancy.engine.engine_trace import EngineTrace
+# from backend.eallmancer import Eallmancer
+from backend.eallmancer_v2 import Eallmancer
 
 import signal
 import sys
@@ -88,7 +88,8 @@ async def websocket_endpoint(websocket: WebSocket):
     client_id = await _conn_manager.connect(websocket)
 
     try:
-        await _conn_manager.send_to(client_id, dict(type='TIMESTAMP_UPDATE', payload=_get_timestamps(app.state)))
+        ts = await _get_timestamps(app.state)
+        await _conn_manager.send_to(client_id, dict(type='TIMESTAMP_UPDATE', payload=ts))
         while True:
             data = await websocket.receive_json()
             data['client_id'] = client_id

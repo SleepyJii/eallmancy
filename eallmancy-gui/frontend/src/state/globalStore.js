@@ -21,7 +21,46 @@ export const useGlobalStore = create((setState, getState) => ({
     ui: {
       selected_node_id: -1,
       min_fitness: 0,
-      max_fitness: 0
+      max_fitness: 0,
+      selected_algo_type: 'GitDiff'
+    },
+    // config: {
+    //   repoPath: '/root/testevolve',
+    //   evalScript: '/root/testevolve/poetry_ex/eval.py',
+    //   description: 'Write a mysterious poem about apples',
+    //   algorithm: null,
+    //   overwrite: false,
+    //   algos: [],
+    //   timestamp: 0,
+    // },
+    config: {
+      llm: {
+        api_server: '',
+        api_model: '',
+        api_key: ''
+      },
+      gitdiff: {
+        repoPath: '/root/testevolve',
+        evalScript: '/root/testevolve/poetry_ex/eval.py',
+        description: 'Write a mysterious poem about apples',
+        algorithm: null,
+        overwrite: false,
+        algos: [],
+        is_selected: true,
+        algo_type: 'gitdiff'
+      },
+      thinkhard: {
+        description: 'Write a mysterious poem about apples',
+        evaluation_prompts: [
+          {},
+        ],
+        score_combination:'ADD',
+        algorithm: null,
+        algos: [],
+        is_selected: false,
+        algo_type: 'thinkhard'
+      },
+      timestamp: 0,
     }
   },
 
@@ -34,10 +73,7 @@ export const useGlobalStore = create((setState, getState) => ({
       return { global: newGlobal };
     });
   }
-  // setField: (field, value) =>
-  //   set(state => ({
-  //     global: { ...state.global, [field]: value }
-  //   }))
+
 }));
 
 

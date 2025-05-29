@@ -20,14 +20,11 @@ class ConnectionManager:
 
     async def send_to(self, client_id: Optional[str], message: dict):
         if client_id is None:
-            # grab active
-            ws = None
-            for _, ws in self.active_connections.items():
-                break
+            await self.broadcast(message)
         else:
             ws = self.active_connections.get(client_id)
-        if ws:
-            await ws.send_json(message)
+            if ws:
+                await ws.send_json(message)
 
     async def broadcast(self, message: dict):
         for ws in self.active_connections.values():

@@ -5,22 +5,23 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 import json
 from pathlib import Path
+import asyncio
 
 
-def _start_evolve(app_state):
+async def _start_evolve(app_state):
     print("EALLMancy STARTING")
     print('config is ',app_state.config)
-    app_state.eallmancer.run(app_state.config)
+    asyncio.create_task(app_state.eallmancer.run(app_state.config))
     return {'status': 'success'}
 
-def _stop_evolve(app_state):
+async def _stop_evolve(app_state):
     print("EALLMancy STOPPING")
-    app_state.eallmancer.stop()
+    await app_state.eallmancer.kill()
     return {'status': 'success'}
 
 
-def _get_timestamps(app_state):
-    _ema_timestamp = app_state.eallmancer.get_trace_timestamp()
+async def _get_timestamps(app_state):
+    _ema_timestamp = await app_state.eallmancer.get_trace_timestamp()
     trace_timestamp = _ema_timestamp
     status_timestamp = max(_ema_timestamp, app_state.config_updated_timestamp)
     res = {
@@ -32,14 +33,14 @@ def _get_timestamps(app_state):
 
 
 
-def _get_status(app_state):
-    _trace = app_state.eallmancer.get_trace()
+async def _get_status(app_state):
+    # _trace = await app_state.eallmancer.get_trace()
     return {
         "timestamp": datetime.utcnow().timestamp(),
         "has_config": app_state.config is not None,
-        "is_running": app_state.eallmancer.is_running,
-        "has_trace": app_state.eallmancer.has_trace,
-        "trace_is_live": app_state.eallmancer.trace_is_live
+        "is_running": await app_state.eallmancer.is_running(),
+        "has_trace": await app_state.eallmancer.has_trace(),
+        "trace_is_live": await app_state.eallmancer.trace_is_live()
     }
 
 
@@ -78,8 +79,6 @@ def _add_graph_positioning(gr):
 def _add_fitness_rank(gr):
     
     srtd_nodes = list(sorted(list(gr.nodes(data=True)), key=lambda nt: nt[1]['artifact'].fitness))
-    # srtd_nodes = [x for x in srtd_nodes if x[1]['fitness'] is not np.nan]
-    # nan_nodes = [x for x in srtd_nodes if x[1]['fitness'] is not np.nan]
     idx = -1
     last_val = None
     for _, n in enumerate(srtd_nodes):
@@ -97,7 +96,9 @@ def stringify_artid(idx: int):
 
 def _jsonify_art(ndd):
     art = ndd['artifact']
-    art.evaluation.fitness *= -1
+    # if not hasattr(art, 'is_flipped'): # maximally hacky switch from minimization to maximization
+    #     art.is_flipped=True
+    #     art.evaluation.fitness *= -1
     js = dict(id = stringify_artid(art.trace_id), artifact_type=str(type(art)).replace("<class '", "").replace("'>",""))
     if art.evaluation is not None:
         # TODO: handle min vs maximization in a better way
@@ -115,17 +116,17 @@ def _jsonify_edge(edg):
     return {'source': stringify_artid(source), 'target': stringify_artid(target)}
 
 
-def _get_trace(app_state):
+async def _get_trace(app_state):
     _empty_trace = { # default empty trace
             "timestamp": datetime.utcnow().timestamp(),
             "graph": {"nodes": [], "edges": []},
         }
 
     # TODO: uncomment after testing
-    if not app_state.eallmancer.has_trace:
+    if not await app_state.eallmancer.has_trace():
         return _empty_trace
     
-    tracegraph = app_state.eallmancer.get_trace()
+    tracegraph = await app_state.eallmancer.get_trace()
     if tracegraph is None:
         return _empty_trace
 
@@ -143,51 +144,52 @@ def _get_trace(app_state):
     return res
 
 
-_ALGOS = ["EOH_git"]
+_ALGOS = {
+    "gitdiff": ["EOH_git"],
+    "thinkhard": ["EOH_git"]
+}
 
-
-def _get_algorithms():
-    return _ALGOS
+def _get_algorithms(algo_type):
+    print('looking for', algo_type,'in',_ALGOS)
+    return _ALGOS.get(algo_type, None)
 
 def _submit_config(app_state, payload):
-    print(payload)
     payload = json.loads(payload)
-    print(payload)
-    repo_path = payload.get('repoPath', '')
-    evalscript = payload.get('evalScript', '')
     descr = payload.get('description', '')
     algo = payload.get('algorithm', '')
+    algo_type = payload.get('algo_type', '')
     
     errors = {}
 
-    # verify repo and evalscript paths are valid
-    if repo_path.strip() == '' or not Path(repo_path.strip()).exists():
-        errors["repoPath"] = f"`{repo_path}` is not a valid directory"
-    if evalscript.strip() == '' or not Path(evalscript.strip()).is_file():
-        errors["evalScript"] = f"`{evalscript}` is not a valid file"
+    if algo_type == 'gitdiff':
+        repo_path = payload.get('repoPath', '')
+        evalscript = payload.get('evalScript', '')
+        
+        if repo_path.strip() == '' or not Path(repo_path.strip()).exists():
+            errors["repoPath"] = f"`{repo_path}` is not a valid directory"
+        if evalscript.strip() == '' or not Path(evalscript.strip()).is_file():
+            errors["evalScript"] = f"`{evalscript}` is not a valid file"
 
-    # make sure description is not actually empty
+    elif algo_type == 'thinkhard':
+        evaluation_prompts = payload.get('evaluation_prompts', [])
+        evaluation_prompts = [ep for ep in evaluation_prompts if ep['description']!='']
+        evaluation_prompts = [ep for ep in evaluation_prompts if ep['name']!='']
+        if evaluation_prompts == []:
+            errors['evaluation_prompts'] = "No non-empty evaluation prompts provided"
+
     if len(descr.strip()) == 0:
         errors["description"] = "No description provided"
-
-    # make sure algo is populated
-    if algo not in _ALGOS:
+    if algo not in _ALGOS[algo_type]:
         errors["algorithm"] = f"Unknown algorithm {algo}"
     
     if errors:
         raise Exception(str(errors))
     
 
-    app_state.config = Config(
-        repoPath=repo_path,
-        evalScript=evalscript,
-        description=descr,
-        algorithm=algo,
-        overwrite=payload.get('overwrite', False)
-    )
+    app_state.config = payload
     app_state.config_updated_timestamp = datetime.utcnow().timestamp()
 
-    print("CONFIG SET SUCCESSFULLY:", app_state.config)
+    print("CONFIG SET SUCCESSFULLY")
     return {"status": "success"}
 
 
@@ -195,57 +197,54 @@ def _submit_config(app_state, payload):
 
 async def msg_worker(msg_q, app_state):
     _conn_manager = app_state.conn_manager
+    worker_id = id(asyncio.current_task())
 
-    while True:
-        task = await msg_q.get()
+    try:
+        while True:
+            task = await msg_q.get()
 
-        
-        client_id = task.get('client_id', None)
-        msg_type = task['type']
-        msg_payload = task.get('payload', None)
+            client_id = task.get('client_id', None)
+            msg_type = task['type']
+            msg_payload = task.get('payload', None)
+            print(f'[W{worker_id}]',task)
 
-        if msg_type == 'GET_TIMESTAMPS':
-            await _conn_manager.send_to(client_id, dict(type='TIMESTAMP_UPDATE', payload=_get_timestamps(app_state)))
-        elif msg_type == 'GET_STATUS':
-            await _conn_manager.send_to(client_id, dict(type='STATUS_UPDATE', payload=_get_status(app_state)))
-        elif msg_type == 'GET_TRACE':
-            await _conn_manager.send_to(client_id, dict(type='FULL_TRACE_UPDATE', payload=_get_trace(app_state)))
-        elif msg_type == 'GET_ALGOS':
-            await _conn_manager.send_to(client_id, dict(type='ALGORITHMS_UPDATE', payload=_get_algorithms()))
-        elif msg_type == 'START_EA':
-            _start_evolve(app_state)
-            await msg_q.put({
-                'type': 'WHILE_RUN_HACK_PING',
-                'client_id': client_id,
-                'reqtime': (datetime.utcnow() + timedelta(seconds=1)).timestamp()
-            })
-            # await _conn_manager.send_to(client_id, dict(type='TIMESTAMP_UPDATE', payload=_get_status(app_state)))
-        elif msg_type == 'STOP_EA':
-            _stop_evolve(app_state)
-            # await _conn_manager.send_to(client_id, dict(type='TIMESTAMP_UPDATE', payload=_get_status(app_state)))
-        elif msg_type == 'SUBMIT_CONFIG':
-            try:
-                _submit_config(app_state, msg_payload)
-            except Exception as e:
-                print(e)
-                print('config submit failed')
+            if msg_type == 'GET_TIMESTAMPS':
+                pl = await _get_timestamps(app_state)
+                await _conn_manager.send_to(client_id, dict(type='TIMESTAMP_UPDATE', payload=pl))
+            elif msg_type == 'GET_STATUS':
+                pl = await _get_status(app_state)
+                await _conn_manager.send_to(client_id, dict(type='STATUS_UPDATE', payload=pl))
+            elif msg_type == 'GET_TRACE':
+                pl = await _get_trace(app_state)
+                await _conn_manager.send_to(client_id, dict(type='FULL_TRACE_UPDATE', payload=pl))
+            elif msg_type == 'GET_ALGOS':
+                algo_type = msg_payload.get('algo_type', 'gitdiff')
+                await _conn_manager.send_to(
+                    client_id,
+                    dict(
+                        type='ALGORITHMS_UPDATE',
+                        payload={'algo_type':algo_type, 'algos':_get_algorithms(algo_type)}
+                    )
+                )
+            elif msg_type == 'START_EA':
+                await _start_evolve(app_state)
+                await msg_q.put({'client_id': client_id, 'type': 'GET_STATUS'})
+                # await _conn_manager.send_to(client_id, dict(type='TIMESTAMP_UPDATE', payload=_get_status(app_state)))
+            elif msg_type == 'STOP_EA':
+                await _stop_evolve(app_state)
+                await msg_q.put({'client_id': client_id, 'type': 'GET_STATUS'})
+                # await _conn_manager.send_to(client_id, dict(type='TIMESTAMP_UPDATE', payload=_get_status(app_state)))
+            elif msg_type == 'SUBMIT_CONFIG':
+                try:
+                    _submit_config(app_state, msg_payload)
+                    await _conn_manager.send_to(client_id, dict(type='CONFIG_UPDATE', payload=[]))
+                    print("initiated CONFIG_UPDATE ping")
+                except Exception as e:
+                    print(e)
+                    print('config submit failed')
+                    
             else:
-                await _conn_manager.send_to(client_id, dict(type='TIMESTAMP_UPDATE', payload=_get_timestamps(app_state)))
-        # elif msg_type == 'WHILE_RUN_HACK_PING':
-        #     if task['reqtime'] < datetime.utcnow().timestamp():
-        #         print('HACKYPOLL during run')
-        #         await _conn_manager.send_to(client_id, dict(type='TIMESTAMP_UPDATE', payload=_get_timestamps(app_state)))
-
-        #         # IF STILL RUNNING, REPEAT
-        #         if app_state.eallmancer.is_running():
-        #             print('\tstill running, hacky poll recurring')
-        #             task.update({'reqtime': (datetime.utcnow() + timedelta(seconds=1)).timestamp()})
-        #             await msg_q.put(task)
-        #         else:
-        #             print('\tno longer running, hacky poll ended')
-            # else:
-            #     await msg_q.put(task)
-        else:
-            print('unknown msg type',msg_type)
-
+                print('unknown msg type',msg_type)
+    except Exception as e:
+        print('failed with',e)
 

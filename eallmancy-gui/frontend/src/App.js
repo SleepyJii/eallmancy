@@ -2,7 +2,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ControlPanel from './pages/ControlPanel';
 import TraceView from './pages/TraceView';
-import Poller from './components/Poller';
 import { useState, useEffect } from 'react';
 
 import Banner from './components/Banner';
@@ -30,7 +29,7 @@ function App() {
     // Optionally: update state, show a fallback, etc.
   }
   return (
-    <div> Hello world
+    <div>
     <Router>
       <Banner />
       <Routes>

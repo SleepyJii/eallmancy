@@ -11,47 +11,52 @@ from .converters import _swap_max_min
 
 
 class BPPoffACOProblemSpec(ProblemSpec):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, maximization=False, *args, **kwargs):
+        _signflips = id if not maximization else _swap_max_min
         super().__init__(
             description=BPPoffACO_prompts["func_desc"],
             template=BPPoffACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
-            evaluator=reallm_evaluator_func(BPPoffACOEvaluator(*args, **kwargs).evaluate),
+            evaluator=reallm_evaluator_func(_signflips(BPPoffACOEvaluator(*args, **kwargs).evaluate)),
         )
 
 class CVRPACOProblemSpec(ProblemSpec):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, maximization=False, *args, **kwargs):
+        _signflips = id if not maximization else _swap_max_min
         super().__init__(
             description=CVRPACO_prompts["func_desc"],
             template=CVRPACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
-            evaluator=reallm_evaluator_func(CVRPACOEvaluator(*args, **kwargs).evaluate),
+            evaluator=reallm_evaluator_func(_signflips(CVRPACOEvaluator(*args, **kwargs).evaluate)),
         )
 
 class MKPACOProblemSpec(ProblemSpec):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, maximization=False, *args, **kwargs):
+        _signflips = id if maximization else _swap_max_min
         super().__init__(
             description=MKPACO_prompts["func_desc"],
             template=MKPACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
-            evaluator=reallm_evaluator_func(_swap_max_min(MKPACOEvaluator(*args, **kwargs).evaluate)),
+            evaluator=reallm_evaluator_func(_signflips(MKPACOEvaluator(*args, **kwargs).evaluate)),
         )
 
 class OPACOProblemSpec(ProblemSpec):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, maximization=False, *args, **kwargs):
+        _signflips = id if maximization else _swap_max_min
         super().__init__(
             description=OPACO_prompts["func_desc"],
             template=OPACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
-            evaluator=reallm_evaluator_func(_swap_max_min(OPACOEvaluator(*args, **kwargs).evaluate)),
+            evaluator=reallm_evaluator_func(_signflips(OPACOEvaluator(*args, **kwargs).evaluate)),
         )
 
 class TSPACOProblemSpec(ProblemSpec):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, maximization=False, *args, **kwargs):
+        _signflips = id if not maximization else _swap_max_min
         super().__init__(
             description=TSPACO_prompts["func_desc"],
             template=TSPACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
-            evaluator=reallm_evaluator_func(TSPACOEvaluator(*args, **kwargs).evaluate),
+            evaluator=reallm_evaluator_func(_signflips(TSPACOEvaluator(*args, **kwargs).evaluate)),
         )
 

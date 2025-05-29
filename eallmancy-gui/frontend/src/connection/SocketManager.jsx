@@ -11,8 +11,6 @@ const host = window.location.host;  // includes hostname and port
 // WebSocket maintenance
 
 let ws = null;
-// let ws = new WebSocket(`${protocol}://${host}/ws`);
-// let reconnectAttempts = 0;
 
 
 const WS_URL = (() => {
@@ -29,16 +27,18 @@ function handle_message(event) {
   // TODO: *think*, what kinds of feedback might come from the backend
   switch (type) {
     case 'TIMESTAMP_UPDATE':
-      console.log('recv timestamp update', payload);
 
       // mimicking Poller logic, though I don't expect to ever ask for timestamps...
       const st_timestamp = payload.status.timestamp;
+      const st_knowntime = useGlobalStore.getState().global.status.timestamp;
       const tr_timestamp = payload.trace.timestamp;
+      const tr_knowntime = useGlobalStore.getState().global.trace.timestamp;
+      console.log('recv timestamp update', payload, 'old sttime',st_knowntime,' old_trtime', tr_knowntime);
 
-      if (st_timestamp > useGlobalStore.getState().global.status.timestamp) {
+      if (st_timestamp > st_knowntime) {
         askStatus();
       }
-      if (tr_timestamp > useGlobalStore.getState().global.trace.timestamp) {
+      if (tr_timestamp > tr_knowntime) {
         askTrace();
       }
       break;
@@ -57,14 +57,23 @@ function handle_message(event) {
       // setField('global.trace', payload);
       // traceRef.current = payload.timestamp;
       break;
+    
+    case 'CONFIG_UPDATE':
+      console.log('recv config update', payload);
+      useGlobalStore.getState().setField('global.config.timestamp', Date.now() / 1e3);
+      askStatus();
+      break;
 
     case 'ALGORITHMS_UPDATE':
+      // TODO: handle different config types!
       console.log('recv algo update', payload);
-      // useConfigStore.getState().setConfigField('algos', payload);
-      useConfigStore.getState().setField('algos', payload);
-      console.log(useConfigStore.getState().algos);
-      if (useConfigStore.getState().config.algorithm === null && payload.length > 0)  {
-        useConfigStore.getState().setField('algorithm', payload[0]);
+      const algo_type = payload.algo_type;
+      const algos = payload.algos;
+      useGlobalStore.getState().setField(`global.config.${algo_type}.algos`, algos);
+      if (useGlobalStore.getState().global.config[algo_type].algorithm === null && algos.length > 0)  {
+        useGlobalStore.getState().setField(`global.config.${algo_type}.algorithm`, algos[0]);
+        console.log('algo is now', useGlobalStore.getState().global.config[algo_type].algorithm);
+        console.log(useGlobalStore.getState().global.config);
       }
       break;
 
@@ -128,8 +137,8 @@ export const askTrace = () => {
 };
 
 // getTrace
-export const askAlgos = () => {
-  sendMessage("GET_ALGOS", []);
+export const askAlgos = (algo_type) => {
+  sendMessage("GET_ALGOS", {algo_type: algo_type});
 };
 
 export const startEvolution = () => {

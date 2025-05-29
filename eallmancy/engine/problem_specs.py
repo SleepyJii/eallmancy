@@ -20,14 +20,14 @@ from eallmancy.evaluation.git_disk_utils import find_evolve_marked_file_sections
 @dataclass
 class EvolveGitSpec(ProblemSpec):
 
-    description: str
-    git_path: str
-    eval_script_path: str
+    git_path: str = ''
+    eval_script_path: str = ''
 
-    def __init__(self, description:str, git_path:str, eval_script_path:str):
+    def __init__(self, description:str, git_path:str, eval_script_path:str, maximization: bool = False):
         self.description = description
         self.git_path = git_path
         self.eval_script_path = eval_script_path
+        self.maximization = maximization
         
         self._file_to_evolve = None
         self._section_templates = None
@@ -75,4 +75,5 @@ class EvolveGitSpec(ProblemSpec):
     def evaluator(self) -> callable:
         # function that accepts solution as callable and returns fitness score
         return lambda : 0
+    
 

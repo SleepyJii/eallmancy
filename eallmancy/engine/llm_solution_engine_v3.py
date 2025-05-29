@@ -23,6 +23,7 @@ from eallmancy.evaluation import (
     EvaluationWorkerPool,
     PythonEvaluationWorker, GitEvaluationWorker, Evaluation
 )
+import asyncio
 from eallmancy.engine.problem_specs import EvolveGitSpec
 
 
@@ -130,9 +131,19 @@ class EngineV3:
             self.trace._register_trace(parents, arte)
             for hook in self.hooks:
                 hook(self.trace)
+        
+    async def async_register_artifact(self, arte: Artifact, parents: List[Artifact] = []):
+        if not self.is_running:
+            raise Exception("cannot generate artifact when the engine has not been started!")
+        
+        if self.trace is not None:
+            self.trace._register_trace(parents, arte)
+            for hook in self.hooks:
+                # because we are in async mode, assuming async hooks
+                await hook(self.trace)
 
 
-    def generate_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
+    def build_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
         if not self.is_running:
             raise Exception("cannot generate artifact when the engine has not been started!")
         
@@ -152,8 +163,22 @@ class EngineV3:
                 artifact: DiffSolution = artifact.set_parent(DummyMultiPartSolution(self._problem_spec.section_templates))
             evaluation = self._worker_pool.evaluate_solution(artifact)
             artifact = artifact.set_evaluation(evaluation)
+        return artifact, parents
 
-        self.register_artifact(artifact, parents)
+
+    def generate_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
+        artifact, parents = self.build_artifact(prompt, arte_class, parents)
+
+        if register:
+            self.register_artifact(artifact, parents)
+
+        return artifact
+    
+    async def async_generate_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
+        artifact, parents = await asyncio.to_thread(self.build_artifact, prompt, arte_class, parents)
+
+        if register:
+            await self.async_register_artifact(artifact, parents)
 
         return artifact
     

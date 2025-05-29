@@ -1,4 +1,4 @@
-import { useGlobalStore } from '../state/globalStore';
+import { useGlobalStore } from '../../state/globalStore';
 import { useMemo } from 'react';
 
 export default function NodeInspector() {

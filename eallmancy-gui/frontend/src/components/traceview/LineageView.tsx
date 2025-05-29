@@ -1,6 +1,7 @@
 
 import React, { useCallback, useState, useEffect, useMemo } from 'react';
-import { useGlobalStore } from '../state/globalStore';
+import dagre from '@dagrejs/dagre';
+import { useGlobalStore } from '../../state/globalStore';
 
 // import ReactFlow, { Background, Controls } from 'react-flow-renderer';
 // import ReactFlow, { Background, Controls } from '@xyflow/react';
@@ -42,10 +43,15 @@ function getFitnessColor(value, value_rank, min, max) {
   const v = parseFloat(value_rank);
   if (isNaN(parseFloat(value))) return '#000';
 
-  const t = (v - min) / (max - min); // normalize to [0, 1]
-  const _LOW_COLOR  = [0, 128, 0];     // green
+
+  let t = (v - min) / (max - min); // normalize to [0, 1]
+  const _LOW_COLOR = [220, 20, 60];   // crimson/red
   const _MID_COLOR  = [224, 150, 31];   // yellow
-  const _HIGH_COLOR = [220, 20, 60];   // crimson/red
+  const _HIGH_COLOR = [0, 128, 0];     // green
+
+  if ((max-min) == 0) {
+    t = 1; 
+  }
 
   let color;
   if (t <= 0.5) {
@@ -171,33 +177,69 @@ export default function LineageView() {
     type: 'dot',
   };
 
-  const nodes = useMemo(() => {
-    return traceGraph.nodes.map(node => ({
-      ...node,
-      position: {
-        x: node.position.x_rank * 50 + 50,
-        y: node.position.y_rank * 50 + 50,
-      },
-      data: node,
-      ...defaultNodeProps,
-    }));
-  }, [traceTimestamp]);
 
-  // const edges = traceGraph.edges.map((edge, i) => ({
-  //   id: `e${i}`,
-  //   source: edge.source,
-  //   target: edge.target,
-  //   type: 'smooth',
-  // }));
 
-  const edges = useMemo(() => {
-    return traceGraph.edges.map((edge, i) => ({
+  // const nodes = useMemo(() => {
+  //   return traceGraph.nodes.map(node => ({
+  //     ...node,
+  //     position: {
+  //       x: node.position.x_rank * 50 + 50,
+  //       y: node.position.y_rank * 50 + 50,
+  //     },
+  //     data: node,
+  //     ...defaultNodeProps,
+  //   }));
+  // }, [traceTimestamp]);
+
+  // const edges = useMemo(() => {
+  //   return traceGraph.edges.map((edge, i) => ({
+  //     id: `e${i}`,
+  //     source: edge.source,
+  //     target: edge.target,
+  //     type: 'smooth',
+  //   }));
+  // }, [traceTimestamp]);
+
+
+  const layoutedGraph = useMemo(() => {
+    const dagreGraph = new dagre.graphlib.Graph();
+    dagreGraph.setDefaultEdgeLabel(() => ({}));
+    dagreGraph.setGraph({ rankdir: 'TB', nodesep: 20, ranksep: 120 });
+
+    traceGraph.nodes.forEach((node) => {
+      dagreGraph.setNode(node.id, { width: 20, height: 20 });
+    });
+
+    traceGraph.edges.forEach((edge) => {
+      dagreGraph.setEdge(edge.source, edge.target);
+    });
+
+    dagre.layout(dagreGraph);
+
+    const layoutedNodes = traceGraph.nodes.map((node) => {
+      const pos = dagreGraph.node(node.id);
+      return {
+        ...node,
+        position: {
+          x: pos.x - 10,
+          y: pos.y - 10,
+        },
+        data: node,
+        ...defaultNodeProps,
+      };
+    });
+
+    const layoutedEdges = traceGraph.edges.map((edge, i) => ({
       id: `e${i}`,
       source: edge.source,
       target: edge.target,
       type: 'smooth',
     }));
+
+    return { nodes: layoutedNodes, edges: layoutedEdges };
   }, [traceTimestamp]);
+
+
 
   // color calcs
   useEffect(() => {
@@ -216,6 +258,8 @@ export default function LineageView() {
       console.log('no fitness values yet, not defining color scale');
     }
   }, [global.trace.timestamp]);
+
+  const { nodes, edges } = layoutedGraph;
 
 
   console.log('rendering...:')
