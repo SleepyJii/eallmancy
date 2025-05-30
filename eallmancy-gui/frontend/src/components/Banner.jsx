@@ -118,7 +118,7 @@ export default function Banner() {
         alignItems: 'center'
       }}>
         <h1 style={{ display: 'inline', marginRight: '100px' }}>EALLMancy</h1>
-        <Link to="/controlpanel" style={{ marginRight: '30px' }}>ControlPanel</Link>
+        <Link to="/config" style={{ marginRight: '30px' }}>Configuration</Link>
         <Link to="/traceview">TraceView</Link>
       </div>
 

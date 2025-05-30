@@ -2,5 +2,6 @@
 from eallmancy.evaluation.evaluation import Evaluation
 from eallmancy.evaluation.git_evaluation_worker import GitEvaluationWorker
 from eallmancy.evaluation.python_evaluation_worker import PythonEvaluationWorker
+from eallmancy.evaluation.qualitative_evaluation_worker import QualitativeEvaluationWorker
 from eallmancy.evaluation.evaluation_worker_pool import EvaluationWorkerPool
 

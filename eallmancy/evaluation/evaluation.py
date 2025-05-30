@@ -6,7 +6,8 @@ import dataclasses
 @dataclasses.dataclass
 class Evaluation:
     fitness: float
-    errors: Optional[str]
+    errors: Optional[str] = None
+    notes: Optional[str] = ''
 
 
 def evaluator(func):

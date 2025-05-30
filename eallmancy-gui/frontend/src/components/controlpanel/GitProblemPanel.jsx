@@ -10,7 +10,6 @@ import { submitConfig, askAlgos } from '../../connection/SocketManager';
 
 export function GitProblemPanel() {
 
-
   const global = useGlobalStore(state => state.global);
   const setGlobalField = useGlobalStore(state => state.setField);
 
@@ -88,7 +87,7 @@ export function GitProblemPanel() {
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: '70px', marginTop: '20px' }}>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '40px' }}>
-          <div>
+          {/* <div>
             <label>Algorithm</label><br />
             <select
               value={global.config.gitdiff.algorithm}
@@ -98,7 +97,7 @@ export function GitProblemPanel() {
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
-          </div>
+          </div> */}
 
           <div>
             <label>LiveOverwrite</label><br />
@@ -110,17 +109,10 @@ export function GitProblemPanel() {
           </div>
 
         </div>
-
-        <button
-          onClick={handleSubmit}
-          disabled={!allValid}
-          style={{ fontSize: '1.2em', padding: '10px 20px' }}
-        >
-          Confirm
-        </button>
       </div>
 
     </div>
 
   );
 }
+

@@ -5,7 +5,7 @@ import multiprocessing
 from multiprocessing import Lock
 from multiprocessing import Manager
 import os
-from eallmancy.engine.problem_specs import EvolveGitSpec
+from eallmancy.engine.evolve_git_spec import EvolveGitSpec
 from algorithms.eoh_git import eoh as eohgit, engine as eohgit_engine
 from eallmancy.engine.engine_trace import EngineTrace
 from datetime import datetime

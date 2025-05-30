@@ -32,7 +32,7 @@ with open('/root/openai_api_key') as f:
 
 
 from algorithms.eoh_git import eoh, engine
-from eallmancy.engine.problem_specs import EvolveGitSpec
+from eallmancy.engine.evolve_git_spec import EvolveGitSpec
 from eallmancy.artifacts.multi_part_solutions import MultiPartSolution
 from eallmancy.evaluation.git_disk_utils import replace_evolve_marked_sections
 

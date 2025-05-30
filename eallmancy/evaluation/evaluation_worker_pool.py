@@ -1,6 +1,6 @@
 
 
-from eallmancy.engine.problem_specs import ProblemSpec
+from eallmancy.engine.evolve_git_spec import ProblemSpec
 from eallmancy.artifacts.multi_part_solutions import MultiPartSolution
 
 

@@ -4,7 +4,8 @@ import os
 from base.config import Config
 from eallmancy.engine.engine_trace import EngineTrace
 from backend.eoh_git_algorithm import EohGitAlgorithm
-from eallmancy.engine.problem_specs import EvolveGitSpec
+from eallmancy.engine.evolve_git_spec import EvolveGitSpec
+from eallmancy.engine.evolve_qualitative_spec import EvolveQualitativeSpec
 from datetime import datetime
 from backend.eallm_state import SharedState
 
@@ -28,7 +29,7 @@ class Eallmancer:
         )
 
     @staticmethod
-    def _convert_uiconfig(cfg):
+    def _convert_uiconfig(cfg, api_details):
         if cfg['algo_type'] == 'gitdiff':
             return EvolveGitSpec(
                         cfg['description'],
@@ -37,8 +38,13 @@ class Eallmancer:
                         maximization=True
                     )
         elif cfg['algo_type'] == 'thinkhard':
-            pass
-            #TODO: implement ThinkHard ProblemSpec type!!
+            return EvolveQualitativeSpec(
+                description=cfg['description'],
+                evaluation_prompts=cfg['evaluation_prompts'],
+                combination_method=cfg['score_combination'],
+                llm_api=api_details,
+                maximization=False
+            )
         else:
             raise Exception(f'cannot create problem spec, unknown algo_type {cfg["algo_type"]}')
 
@@ -53,16 +59,19 @@ class Eallmancer:
         await self.serv_msg_q.put(dict(type='GET_STATUS', payload=[]))
         await self.serv_msg_q.put(dict(type='GET_TIMESTAMPS', payload=[]))
         try:
-            algo = EohGitAlgorithm(
-                await asyncio.to_thread(self._convert_uiconfig, config),
-                dict(
+            algo_settings = config.get('algo_settings', dict())
+            api_details = dict(
                     host="api.openai.com",
                     key=os.environ.get('OPENAI_API_KEY'),
                     model="gpt-4o-mini",
                     timeout=20
-                ),
+                )
+            algo = EohGitAlgorithm(
+                await asyncio.to_thread(self._convert_uiconfig, config, api_details),
+                api_details,
                 registry_callback=self.trigger_ui_update,
-                shared_state=self._shared_state
+                shared_state=self._shared_state,
+                **algo_settings
             )
             res = await algo.run()
         except Exception as e:
@@ -83,9 +92,8 @@ class Eallmancer:
 
         # trigger UI update
         _upd_task = dict(type='GET_TIMESTAMPS', payload=[])
-        print(f"ASKED SERV Q TO UPDATE TIMESTAMPS, ({(self.serv_msg_q.qsize())}, {len(self.serv_msg_q._getters)})")
         await self.serv_msg_q.put(_upd_task)
-        print(f"\t\t, ({(self.serv_msg_q.qsize())}, {len(self.serv_msg_q._getters)})")
+        print(f"\tnew soln in trace")
 
     async def start(self):
         await self._shared_state.update(**{

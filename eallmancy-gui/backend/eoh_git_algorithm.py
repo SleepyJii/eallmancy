@@ -53,12 +53,11 @@ Algorithm: {self.thought}
 
 async def i1_solution(engine: EngineV3):
     prmpt = f'''{engine._problem_spec.description}
-1. First, describe your new algorithm and main steps in one sentence. The description must be inside within boxed <<>>. 
-2. Next, improve on the following sections of code:
+1. First, describe your new solution and main steps in one sentence. The description must be inside within boxed <<>>. 
+2. Next, improve on the following solution containing the following sections:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
-Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
-Remember to include appropriate indentations in both SEARCH and REPLACE blocks. Do not give additional explanations.'''
-    return await engine.async_generate_artifact(prmpt, ThoughtfulDiffSolution)
+Provide your implementation in matching content blocks, each marked like ``` ... ```. Do not give additional explanations.'''
+    return await engine.async_generate_artifact(prmpt, ThoughtfulSolution)
 
 
 async def e1_solution(engine: EngineV3, *parent_solns):
@@ -67,9 +66,9 @@ I have {len(parent_solns)} existing solutions with their contents as follows:
 {'\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parent_solns)])}
 Please help me create a new solution that is totally different from the given ones. 
 1. First, describe your new solution and its contents in one sentence. The description must be inside within boxed <<>>.
-2. Next, improve on the following sections of code:
+2. Next, improve on the following solution containing the following sections:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
-Provide your implementation in matching code blocks, each marked like ``` ... ```. Do not give additional explanations.'''
+Provide your implementation in matching content blocks, each marked like ``` ... ```. Do not give additional explanations.'''
     return await engine.async_generate_artifact(prmpt, ThoughtfulSolution, parents=parent_solns)
 
 
@@ -80,9 +79,9 @@ I have {len(parent_solns)} existing solutions with their contents as follows:
 Please help me create a new solution that is totally different from the given ones but can be motivated from them.
 1. Firstly, identify the common backbone idea in the provided solutions. 
 2. Secondly, based on the backbone idea describe your new solution in one sentence. The description must be inside within boxed <<>>.
-3. Thirdly, improve on the following sections of code:
+2. Thirdly, improve on the following solution containing the following sections:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
-Provide your implementation in matching code blocks, each marked like ``` ... ```. Do not give additional explanations.'''
+Provide your implementation in matching content blocks, each marked like ``` ... ```. Do not give additional explanations.'''
     return await engine.async_generate_artifact(prmpt, ThoughtfulSolution, parents=parent_solns)
 
 
@@ -92,7 +91,7 @@ I have one solution with its content as follows...
 {str(parent_soln)}
 Please assist me in creating a new solution that is different but can be a modified version of the solution provided.
 1. First, describe your new solution and main steps in one sentence. The description must be inside within boxed <<>>.
-2. Next, improve on the following sections of code:
+2. Next, improve on the following solution containing the following sections:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
 Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
 Remember to include appropriate indentations in both SEARCH and REPLACE blocks. Do not give additional explanations.'''
@@ -101,11 +100,11 @@ Remember to include appropriate indentations in both SEARCH and REPLACE blocks. 
 
 async def m2_solution(engine: EngineV3, parent_soln):
     prmpt = f'''{engine._problem_spec.description}
-I have one solution with its code as follows...
+I have one solution with its contents as follows...
 {str(parent_soln)}
 Please identify the main solution parameters and assist me in creating a new solution that has a different parameter settings of the score function provided.
 1. First, describe your new solution and main steps in one sentence. The description must be inside within boxed <<>>.
-2. Next, improve on the following sections of code:
+2. Next, improve on the following solution containing the following sections:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
 Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
 Remember to include appropriate indentations in both SEARCH and REPLACE blocks. Do not give additional explanations.'''
@@ -156,7 +155,11 @@ class Population:
 
 
 class EohGitAlgorithm:
-    def __init__(self, ps, api, registry_callback, shared_state: SharedState):
+    def __init__(
+            self, ps, api, registry_callback, shared_state: SharedState,
+              num_initial_samples=3, pop_size=5, max_samples=10, max_generations=10,
+              num_e1=1, num_e2=1, num_m1=1, num_m2=1, num_e1_parents=2, num_e2_parents=2, **kwargs
+              ):
                 
         self.engine = (
             EngineV3(
@@ -168,11 +171,15 @@ class EohGitAlgorithm:
         self.api = api
         self.ps = ps
 
-        self.num_initial_samples=3
-        self.pop_size=5
-        self.max_samples=10
-        self.max_generations=10
         self._shared_state: SharedState = shared_state
+
+        self.num_initial_samples=num_initial_samples
+        self.pop_size=pop_size
+        self.max_samples=max_samples
+        self.max_generations=max_generations
+        self.num_e1, self.num_e2, self.num_m1, self.num_m2 = num_e1, num_e2, num_m1, num_m2
+        self.num_e1_parents, self.num_e2_parents = num_e1_parents, num_e2_parents
+
 
     async def stateful_run_generate(self, operator, *args, **kwargs):
 
@@ -200,29 +207,22 @@ class EohGitAlgorithm:
                 popsize=self.pop_size,
                 maximization=self.ps.maximization
             )
-            e1_per_gen=1
-            e2_per_gen=1
-            m1_per_gen=1
-            m2_per_gen=1
-            num_e1_parents=2
-            num_e2_parents=2
             print('init_solutions',init_samples)
 
             while not population.eoh_completed():
-                for _ in range(e1_per_gen):
-                    parent_selection = population.selection(num_e1_parents)
-                    print('pop_selection_E1')
+                for _ in range(self.num_e1):
+                    parent_selection = population.selection(self.num_e1_parents)
                     na = await self.stateful_run_generate(e1_solution, *parent_selection)
                     population.register([na])
-                for _ in range(e2_per_gen):
-                    parent_selection = population.selection(num_e2_parents)
+                for _ in range(self.num_e2):
+                    parent_selection = population.selection(self.num_e2_parents)
                     na = await self.stateful_run_generate(e2_solution, *parent_selection)
                     population.register([na])
-                for _ in range(m1_per_gen):
+                for _ in range(self.num_m1):
                     parent_selection = population.selection(1)
                     na = await self.stateful_run_generate(m1_solution, *parent_selection)
                     population.register([na])
-                for _ in range(m2_per_gen):
+                for _ in range(self.num_m2):
                     parent_selection = population.selection(1)
                     na = await self.stateful_run_generate(m2_solution, *parent_selection)
                     population.register([na])

@@ -34,7 +34,7 @@ function App() {
       <Banner />
       <Routes>
         <Route path="/" element={<ControlPanel />}/>
-        <Route path="/controlpanel" element={<ControlPanel />} />
+        <Route path="/config" element={<ControlPanel />} />
         <Route path="/traceview" element={<TraceView />} />
         <Route path="/" element={<SocketTest />} />
       </Routes>

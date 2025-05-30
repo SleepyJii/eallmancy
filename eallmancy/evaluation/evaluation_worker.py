@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from typing import List
 from eallmancy.evaluation.evaluation import Evaluation
 from eallmancy.artifacts.multi_part_solutions import MultiPartSolution, DummyMultiPartSolution, DiffSolution
-from eallmancy.engine.problem_specs import ProblemSpec, EvolveGitSpec
+from eallmancy.engine.evolve_git_spec import ProblemSpec, EvolveGitSpec
 
                 
 

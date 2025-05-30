@@ -267,7 +267,7 @@ export default function LineageView() {
 
   return (
     <div style={{
-       width: 'min(600px, 50%)',
+       width: 'min(750px, 50%)',
         height: '80vh',
         marginLeft: '30px',
 

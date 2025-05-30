@@ -2,7 +2,11 @@ import { useState, useRef } from 'react';
 import { useGlobalStore } from '../../state/globalStore';
 import { submitConfig, askAlgos } from '../../connection/SocketManager';
 
+
+
+
 export function ThinkHardProblemPanel() {
+
   const global = useGlobalStore(state => state.global);
   const setGlobalField = useGlobalStore(state => state.setField);
   const configRegisteredRef = useRef(global.status.has_config);
@@ -89,18 +93,18 @@ export function ThinkHardProblemPanel() {
       </div>
         <p></p>
     <div>
-        <label>Score Combination</label><br />
+        <label>Score Combination</label> <br/>
         <select
         value={global.config.thinkhard.score_combination}
         onChange={e => handleChange('config.thinkhard.score_combination', e.target.value)}
         >
-        <option value="ADD">ADD</option>
+        <option value="SUM">SUM</option>
         <option value="MIN">MIN</option>
         <option value="MAX">MAX</option>
         </select>
-    </div>
+    </div><br />
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '40px', marginTop: '20px' }}>
+      {/* <div style={{ display: 'flex', alignItems: 'flex-end', gap: '40px', marginTop: '20px' }}>
         <div>
           <label>Algorithm</label><br />
           <select
@@ -113,14 +117,8 @@ export function ThinkHardProblemPanel() {
           </select>
         </div>
 
-        <button
-          onClick={handleSubmit}
-          disabled={!allValid}
-          style={{ fontSize: '1.2em', padding: '10px 20px' }}
-        >
-          Confirm
-        </button>
-      </div>
+      </div> */}
     </div>
   );
 }
+

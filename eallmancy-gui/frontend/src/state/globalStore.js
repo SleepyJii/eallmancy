@@ -4,6 +4,13 @@ import { create } from 'zustand';
 import set from 'lodash/set';
 
 
+const initialAlgoSettings = `
+{
+"num_initial_samples":5, "pop_size":10, "max_samples":30, "max_generations":1000,
+"num_e1":1, "num_e2":1, "num_m1":1, "num_m2":1, "num_e1_parents":3, "num_e2_parents":3
+}
+`;
+
 
 export const useGlobalStore = create((setState, getState) => ({
   global: {
@@ -22,7 +29,8 @@ export const useGlobalStore = create((setState, getState) => ({
       selected_node_id: -1,
       min_fitness: 0,
       max_fitness: 0,
-      selected_algo_type: 'GitDiff'
+      selected_algo_type: 'GitDiff',
+      selected_config_tab: 'Problem'
     },
     // config: {
     //   repoPath: '/root/testevolve',
@@ -34,9 +42,12 @@ export const useGlobalStore = create((setState, getState) => ({
     //   timestamp: 0,
     // },
     config: {
+      algo: {
+        settings: initialAlgoSettings
+      },
       llm: {
-        api_server: '',
-        api_model: '',
+        api_server: "https://api.openai.com",
+        model: 'gpt-4o-mini',
         api_key: ''
       },
       gitdiff: {
@@ -52,9 +63,11 @@ export const useGlobalStore = create((setState, getState) => ({
       thinkhard: {
         description: 'Write a mysterious poem about apples',
         evaluation_prompts: [
-          {},
+          {'name': 'fluency', 'description': 'score the output in terms of its writing quality between 0 (worst) and 100 (best)'},
+          {'name': 'originality', 'description': 'score the poem on its original creativity between 0 (worst) and 100 (best)'},
+          {'name': 'structure', 'description': 'score the poem on the appealingness of its structure, rhymes, and symmetries between 0 (worst) and 100 (best)'},
         ],
-        score_combination:'ADD',
+        score_combination:'SUM',
         algorithm: null,
         algos: [],
         is_selected: false,

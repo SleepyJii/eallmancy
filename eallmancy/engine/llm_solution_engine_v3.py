@@ -20,11 +20,12 @@ from eallmancy.artifacts.multi_part_solutions import (
     MultiPartSolution, DiffSolution, DummyMultiPartSolution
 )
 from eallmancy.evaluation import (
-    EvaluationWorkerPool,
+    EvaluationWorkerPool, QualitativeEvaluationWorker,
     PythonEvaluationWorker, GitEvaluationWorker, Evaluation
 )
 import asyncio
-from eallmancy.engine.problem_specs import EvolveGitSpec
+from eallmancy.engine.evolve_git_spec import EvolveGitSpec
+from eallmancy.engine.evolve_qualitative_spec import EvolveQualitativeSpec
 
 
 class EngineSetupContext:
@@ -99,11 +100,24 @@ class EngineV3:
         if not self.is_ready():
             raise Exception("engine does not have both API and ProblemSpec! cannot start")
 
-        self._worker_pool = EvaluationWorkerPool(
-            GitEvaluationWorker if (type(self._problem_spec) is EvolveGitSpec) else PythonEvaluationWorker,
-            ps=self._problem_spec,
-            n_workers=1 # waiting on impl
-        ).setup()
+        if type(self._problem_spec) is EvolveGitSpec:
+            self._worker_pool = EvaluationWorkerPool(
+                GitEvaluationWorker,
+                ps=self._problem_spec,
+                n_workers=1 # waiting on impl
+            ).setup()
+        elif type(self._problem_spec) is EvolveQualitativeSpec:
+            self._worker_pool = EvaluationWorkerPool(
+                QualitativeEvaluationWorker,
+                ps=self._problem_spec,
+                n_workers=1
+            ).setup()
+        else:
+            self._worker_pool = EvaluationWorkerPool(
+                PythonEvaluationWorker,
+                ps=self._problem_spec,
+                n_workers=1
+            ).setup()
 
         self.start_trace()
         self.is_running = True
