@@ -8,10 +8,26 @@ from llm4ad.task.optimization.jssp_construct import JSSPEvaluation
 from llm4ad.task.optimization.cvrp_construct import CVRPEvaluation
 from llm4ad.task.optimization.knapsack_construct import KnapsackEvaluation
 
+from llm4ad.task.science_discovery.bactgrow import BGEvaluation
+from llm4ad.task.machine_learning.pendulum import PendulumEvaluation
+
 from eallmancy import ProblemSpec, evaluator as reallm_evaluator_func
 
 
 from .converters import _swap_max_min
+
+
+class BGProblemSpec(ProblemSpec):
+    def __init__(self, maximization=True, *args, **kwargs):
+        _signflips = id if not maximization else _swap_max_min
+        tt = BGEvaluation()
+        super().__init__(
+            description=tt.task_description,
+            template=tt.template_program,
+            entrypoint="equation",
+            evaluator=reallm_evaluator_func(_signflips(tt.evaluate)),
+        )
+
 
 class OBPProblemSpec(ProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):

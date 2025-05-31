@@ -52,8 +52,8 @@ export const useGlobalStore = create((setState, getState) => ({
       },
       gitdiff: {
         repoPath: '/root/testevolve',
-        evalScript: '/root/testevolve/poetry_ex/eval.py',
-        description: 'Write a mysterious poem about apples',
+        evalScript: '/root/testevolve/ecoli/eval.py',
+        description: 'Find the mathematical function skeleton that represents E. Coli bacterial growth rate, given data on population density, substrate concentration, temperature, and pH level. Implement it as a Python function called `equation`.',
         algorithm: null,
         overwrite: false,
         algos: [],

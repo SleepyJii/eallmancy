@@ -56,7 +56,8 @@ async def i1_solution(engine: EngineV3):
 1. First, describe your new solution and main steps in one sentence. The description must be inside within boxed <<>>. 
 2. Next, improve on the following solution containing the following sections:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
-Provide your implementation in matching content blocks, each marked like ``` ... ```. Do not give additional explanations.'''
+Provide your implementation with the *same* number of content blocks as the previous solution ({len(engine._problem_spec.section_templates)} blocks).
+Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solution description or anything else. Do not give additional explanations.'''
     return await engine.async_generate_artifact(prmpt, ThoughtfulSolution)
 
 
@@ -68,7 +69,8 @@ Please help me create a new solution that is totally different from the given on
 1. First, describe your new solution and its contents in one sentence. The description must be inside within boxed <<>>.
 2. Next, improve on the following solution containing the following sections:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
-Provide your implementation in matching content blocks, each marked like ``` ... ```. Do not give additional explanations.'''
+Provide your implementation with the *same* number of content blocks as the previous solution ({len(engine._problem_spec.section_templates)} blocks).
+Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solution description or anything else. Do not give additional explanations.'''
     return await engine.async_generate_artifact(prmpt, ThoughtfulSolution, parents=parent_solns)
 
 
@@ -81,7 +83,8 @@ Please help me create a new solution that is totally different from the given on
 2. Secondly, based on the backbone idea describe your new solution in one sentence. The description must be inside within boxed <<>>.
 2. Thirdly, improve on the following solution containing the following sections:
 {'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
-Provide your implementation in matching content blocks, each marked like ``` ... ```. Do not give additional explanations.'''
+Provide your implementation with the *same* number of content blocks as the previous solution ({len(engine._problem_spec.section_templates)} blocks).
+Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solution description or anything else. Do not give additional explanations.'''
     return await engine.async_generate_artifact(prmpt, ThoughtfulSolution, parents=parent_solns)
 
 
@@ -91,11 +94,9 @@ I have one solution with its content as follows...
 {str(parent_soln)}
 Please assist me in creating a new solution that is different but can be a modified version of the solution provided.
 1. First, describe your new solution and main steps in one sentence. The description must be inside within boxed <<>>.
-2. Next, improve on the following solution containing the following sections:
-{'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
-Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
-Remember to include appropriate indentations in both SEARCH and REPLACE blocks. Do not give additional explanations.'''
-    return await engine.async_generate_artifact(prmpt, ThoughtfulDiffSolution, parents=[parent_soln])
+2. Next, improve on the previous solution. Provide your implementation with the *same* number of content blocks as the previous solution ({len(engine._problem_spec.section_templates)} blocks).
+Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solution description or anything else. Do not give additional explanations.'''
+    return await engine.async_generate_artifact(prmpt, ThoughtfulSolution, parents=[parent_soln])
 
 
 async def m2_solution(engine: EngineV3, parent_soln):
@@ -104,11 +105,9 @@ I have one solution with its contents as follows...
 {str(parent_soln)}
 Please identify the main solution parameters and assist me in creating a new solution that has a different parameter settings of the score function provided.
 1. First, describe your new solution and main steps in one sentence. The description must be inside within boxed <<>>.
-2. Next, improve on the following solution containing the following sections:
-{'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
-Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
-Remember to include appropriate indentations in both SEARCH and REPLACE blocks. Do not give additional explanations.'''
-    return await engine.async_generate_artifact(prmpt, ThoughtfulDiffSolution, parents=[parent_soln])
+2. Next, improve on the previous solution. Provide your implementation with the *same* number of content blocks as the previous solution ({len(engine._problem_spec.section_templates)} blocks).
+Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solution description or anything else. Do not give additional explanations.'''
+    return await engine.async_generate_artifact(prmpt, ThoughtfulSolution, parents=[parent_soln])
 
 
 
