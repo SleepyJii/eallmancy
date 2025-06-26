@@ -10,7 +10,11 @@ class Evaluation:
     notes: Optional[str] = ''
 
 
-def evaluator(func):
+def evaluator(func, maximization=False):
+    if maximization:
+        _mult = -1
+    else:
+        _mult = 1
     def _func(heuristic):
         try:
             res = func(heuristic)
@@ -20,7 +24,7 @@ def evaluator(func):
             )
         except Exception as e:
             return Evaluation(
-                fitness = float('inf'),
+                fitness = float('inf') * _mult,
                 errors = str(e)
             )
     return _func

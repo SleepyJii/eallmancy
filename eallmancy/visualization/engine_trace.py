@@ -19,6 +19,30 @@ def _plot_graph(tg, node_colors=None):
     
     return fig, ax
 
+def plot_graph_nodelambda(tg, lam, continuous=False):
+    classes = list(sorted({
+        lam(data)
+        for _, data in tg.nodes(data=True)
+    }))
+    if continuous:
+        cmap = get_cmap('plasma', len(classes))
+    else:
+        cmap = get_cmap('tab10', len(classes))
+    class_to_color = {
+        cls: mcolors.to_hex(cmap(i))
+        for i, cls in enumerate(classes)
+    }
+    node_colors = [
+        class_to_color[lam(data)] for _, data in tg.nodes(data=True)
+    ]
+    fig, ax = _plot_graph(tg, node_colors=node_colors)
+    legend_handles = [
+        mpatches.Patch(color=color, label=str(lab))
+        for lab, color in class_to_color.items()
+    ]
+    ax.legend(handles=legend_handles, title="Lambda Value")
+    ax.set_title(f"Graph Colored by Custom Function")
+    return fig
 
 def plot_graph_typecolors(tg, colormap=dict()):
     artifact_classes = list({
