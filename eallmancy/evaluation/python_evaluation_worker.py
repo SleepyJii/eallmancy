@@ -25,7 +25,7 @@ from eallmancy.evaluation.evaluation_worker import EvaluateSolutionWorker
 
 class PythonEvaluationWorker(EvaluateSolutionWorker):
     def __init__(self, ps: ProblemSpec, idx=0):
-        self.problem_spec = ps
+        self.problem_spec: ProblemSpec = ps
     
     def evaluate_solution(self, soln: MultiPartSolution) -> Evaluation:
 
@@ -43,18 +43,22 @@ class PythonEvaluationWorker(EvaluateSolutionWorker):
         prog = SampleTrimmer.sample_to_program(resp_txt_trim, self.problem_spec.template)
         
         if prog is None:
-            return Evaluation(fitness=float("inf"), errors="no program found")
+            return Evaluation(fitness=float("inf") * (-1 if self.problem_spec.maximization else 1), errors="no program found")
         else:
-            prog = Program(preface=resp_codepreface, functions=prog.functions)
-            heuristic = [ff for ff in prog.exec() if ff.__name__ == self.problem_spec.entrypoint][0]
             try:
+                prog = Program(preface=resp_codepreface, functions=prog.functions)
+                heuristic = [ff for ff in prog.exec() if ff.__name__ == self.problem_spec.entrypoint][0]
                 res = self.problem_spec.evaluator(heuristic)
+                
+                if type(res) is Evaluation:
+                    return res  # some fitness functions may handle evaluation manually
+
                 return Evaluation(
                     fitness = res,
                     errors = None
                 )
             except Exception as e:
                 return Evaluation(
-                    fitness = float('inf'),
+                    fitness = float('inf') * (-1 if self.problem_spec.maximization else 1),
                     errors = str(e)
                 )

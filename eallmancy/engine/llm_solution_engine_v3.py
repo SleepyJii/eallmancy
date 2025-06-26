@@ -75,7 +75,7 @@ class EngineSetupContext:
 
 
 class EngineV3:
-    def __init__(self, api_spec=None, problem_spec: ProblemSpec=None, debug=False, tracing=False):
+    def __init__(self, api_spec=None, problem_spec: ProblemSpec=None, debug=False):
         if api_spec is None:
             self._sampler = None
         else:
@@ -188,8 +188,11 @@ class EngineV3:
 
         return artifact
     
+    async def async_build_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
+        return await asyncio.to_thread(self.build_artifact, prompt, arte_class, parents)
+
     async def async_generate_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
-        artifact, parents = await asyncio.to_thread(self.build_artifact, prompt, arte_class, parents)
+        artifact, parents = await self.async_build_artifact( prompt, arte_class, parents)
 
         if register:
             await self.async_register_artifact(artifact, parents)
