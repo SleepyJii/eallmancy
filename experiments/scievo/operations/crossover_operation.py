@@ -53,6 +53,8 @@ class CrossoverOperation(Operation):
                 valid_dists = {(n,m): d for (n,m), d in distances.items() if n in artifacts.keys() and m in artifacts.keys()}
                 npairs = len(valid_dists)
                 probs = np.array([distance_act(d) * fitness_act(fitnesses[n]) * fitness_act(fitnesses[m]) for (n,m), d in valid_dists.items()])
+                if probs.sum() == 0:
+                    probs += 1.0   # only possible when everything is zero, activations make weakly positive
                 probs = probs.astype(float) / probs.sum()
                 pair_idx = np.random.choice(list(range(npairs)), p=probs)
                 nidx, midx = list(valid_dists.keys())[pair_idx]
@@ -60,6 +62,8 @@ class CrossoverOperation(Operation):
                 append_remove_elem(midx)
             else:
                 probs = np.array(list(map( lambda ts: 1.0* ts[1] * fitness_act(fitnesses[ts[0]]), marginal_score_memo.items() )))
+                if probs.sum() == 0:
+                    probs += 1.0   # only possible when everything is zero, activations make weakly positive
                 probs = probs.astype(float) / probs.sum()
                 nidx = np.random.choice(
                     list(marginal_score_memo.keys()),

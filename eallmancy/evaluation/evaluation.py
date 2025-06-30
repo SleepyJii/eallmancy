@@ -18,6 +18,8 @@ def evaluator(func, maximization=False):
     def _func(heuristic):
         try:
             res = func(heuristic)
+            if res is None:
+                raise Exception("evaluation function returned None rather than a numeric score")
             return Evaluation(
                 fitness = res,
                 errors = None
