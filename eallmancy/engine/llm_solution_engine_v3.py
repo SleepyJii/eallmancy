@@ -4,6 +4,7 @@ import re
 from typing import Dict, List, Optional
 
 from llm4ad.tools.llm.llm_api_https import HttpsApi
+from llm4ad.tools.llm.llm_api_openai import OpenAIAPI
 from llm4ad.base.sample import SampleTrimmer
 
 import networkx as nx
@@ -27,6 +28,8 @@ import asyncio
 from eallmancy.engine.evolve_git_spec import EvolveGitSpec
 from eallmancy.engine.evolve_qualitative_spec import EvolveQualitativeSpec
 
+def _filter_openai_kwargs(api_spec):
+    return {k:v for k,v in api_spec.items() if k in ['base_url', 'api_key', 'model', 'timeout']}
 
 class EngineSetupContext:
     def __init__(self, engine):
@@ -47,7 +50,10 @@ class EngineSetupContext:
         
         self._old_sampler = self._new_sampler = self._engine._sampler
         if api_spec is not None:
-            self._new_sampler = SampleTrimmer(HttpsApi(**api_spec))
+            if api_spec.get('openai_format', False):
+                self._new_sampler = SampleTrimmer(OpenAIAPI(**_filter_openai_kwargs(api_spec)))
+            else:
+                self._new_sampler = SampleTrimmer(HttpsApi(**api_spec))
         
         self._old_pspec = self._new_pspec = self._engine._problem_spec
         if problem_spec is not None:
@@ -76,10 +82,14 @@ class EngineSetupContext:
 
 class EngineV3:
     def __init__(self, api_spec=None, problem_spec: ProblemSpec=None, debug=False):
-        if api_spec is None:
-            self._sampler = None
+        if api_spec is not None:
+            if api_spec.get('openai_format', False):
+                self._sampler = SampleTrimmer(OpenAIAPI(**_filter_openai_kwargs(api_spec)))
+            else:
+                self._sampler = SampleTrimmer(HttpsApi(**api_spec))
         else:
-            self._sampler = SampleTrimmer(HttpsApi(**api_spec))
+            self._sampler = None
+        
         self._problem_spec = problem_spec
         self.set = EngineSetupContext(self)
 

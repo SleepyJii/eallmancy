@@ -3,3 +3,7 @@ data
 cobench
 **/__pycache__/
 **/node_modules/
+.jplag_inp
+.jplag_otp
+*.jplag
+*.pk
