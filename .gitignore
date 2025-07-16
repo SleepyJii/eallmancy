@@ -7,3 +7,4 @@ cobench
 .jplag_otp
 *.jplag
 *.pk
+.ipynb_checkpoints/
