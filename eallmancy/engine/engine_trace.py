@@ -5,6 +5,7 @@ import itertools
 from eallmancy.artifacts.artifact import Artifact
 from eallmancy.evaluation.evaluation import Evaluation
 from typing import Dict, List
+from pathlib import Path
 
 from threading import Lock, Thread
 import pickle as pk
@@ -22,6 +23,10 @@ class EngineTrace:
     def graph(self):
         return self.trace_graph
     
+    def __getitem__(self, k):
+        with self.lock:
+            return self.trace_graph.nodes(data='artifact')[k]
+    
     @property
     def list(self):
         return self.trace_list
@@ -29,13 +34,13 @@ class EngineTrace:
     def new_id(self):
         return next(self._id_generator)
 
-    def _register_trace(self, input_arts, output_art, prompt_builder_name=''):
+    def _register_trace(self, input_arts, output_art, prompt_builder_name='', **tags):
         with self.lock:
             self.trace_list.append(output_art)
             self.trace_graph.add_node(
                 output_art.trace_id,
-                label=f'{prompt_builder_name or "OP"}-{output_art.trace_id}',
-                artifact=output_art
+                artifact=output_art,
+                **tags
             )
             for inp_art in input_arts:
                 if inp_art is not None:
@@ -52,6 +57,7 @@ class EngineTrace:
 
     def save(self, path):
         self.lock = None # lock is unpickleable
+        Path(path).parent.mkdir(exist_ok=True, parents=True)
         with open(path, 'wb') as f:
             pk.dump(self, f)
 

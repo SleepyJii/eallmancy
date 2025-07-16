@@ -132,7 +132,7 @@ def _eoh_worker(population: Population, operator, num_parents=1):
 
 
 class ToyEoH:
-    def __init__(self, api=None, ps: ProblemSpec=None, max_generations=float('inf'), n_workers=1, config=dict()):
+    def __init__(self, api=None, ps: ProblemSpec=None, max_generations=float('inf'), n_workers=1, config=dict(), hooks=[]):
         self.num_initial_samples=config.get('num_initial_samples', 5)
         self.max_samples=config.get('max_samples', 10)
         self.max_generations=max_generations
@@ -140,12 +140,14 @@ class ToyEoH:
         self.api_spec = api
         self.problem_spec = ps
         self.config = config
+        self.hooks = hooks
 
     async def run(self, **kwargs) -> SinglePartSolution:
 
         # this syntactical sugar just lets you specify an optional new problemspec to eoh(..)
         # specifying the problem spec in the engine constructor is also sufficient
-        with engine.set(api_spec=self.api_spec, problem_spec=self.problem_spec): 
+        with engine.set(api_spec=self.api_spec, problem_spec=self.problem_spec):
+            engine.hooks = self.hooks
             engine.start()
             prompts = Prompts(engine)
             population = Population(
