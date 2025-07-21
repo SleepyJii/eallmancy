@@ -2,132 +2,10 @@
 import numpy as np
 from typing import Optional, List
 from dataclasses import dataclass
-from trace_analysis.segm_printing import *
+from trace_analysis.atomization.match_atom import MatchAtom
+from trace_analysis.atomization.solution_segment import SolutionSegment
 
 
-@dataclass
-class SolutionSegment:
-    soln_id: int
-    soln_length: int   # number of tokens in soln as per JPlag
-    start_token: int
-    end_token: int     # INCLUSIVE!!!
-    original_segid: Optional[int] = None
-
-    def __hash__(self):
-        # specifically not including original_segid, because I want to prefer pre-existing None
-        return hash(f'{self.soln_id},{self.soln_length},{self.start_token},{self.end_token}')
-
-    def __eq__(self, oth):
-        return self.__hash__() == oth.__hash__()
-    
-    def copy(self):
-        return SolutionSegment(self.soln_id, self.soln_length, self.start_token, self.end_token, self.original_segid)
-    
-    @property
-    def length(self): return 1 + self.end_token - self.start_token
-
-    @property
-    def is_valid(self):
-        return (self.start_token >= 0) and (self.end_token >= self.start_token) and (self.end_token < self.soln_length)
-
-    def set_start_token(self, idx):
-        self.start_token = idx
-        return self
-    
-    def set_end_token(self, idx):
-        self.end_token = idx
-        return self
-
-@dataclass
-class MatchAtom:
-    entries: List[SolutionSegment]
-    description: Optional[str] = None
-
-    def _filter_invalid(self):
-        for e in self.entries:
-            if not e.is_valid:
-                raise Exception("why are we invalidating?")
-            #     print('invalidating',e)
-        self.entries = [e for e in self.entries if e.is_valid]
-        return self
-
-    def __post_init__(self):
-        self._filter_invalid()
-
-    def __hash__(self):
-        # specifically not including original_segid, because I want to prefer pre-existing None
-        return hash(frozenset({e.__hash__() for e in self.entries}))
-
-    def __eq__(self, oth):
-        return self.__hash__() == oth.__hash__()
-
-    def get(self, perspective_id: int):
-        rr = [e for e in self.entries if e.soln_id == perspective_id]
-        if len(rr) > 0:
-            return rr.pop()
-        return None
-
-    def solution_members(self):
-        return set([e.soln_id for e in self.entries])
-
-    def originalseg_members(self):
-        return set([e.original_segid for e in self.entries])
-
-    def token_length(self):
-        if len(self.entries) == 0:
-            return 0
-        for e in self.entries:
-            break
-        return e.length
-
-    def set_description(self, sstr):
-        self.description = sstr
-        return self
-
-    def add(self, segment):
-        ex = self.get(segment.soln_id)
-        if ex is not None:
-            if ex.original_segid is None:
-                # to be replaced!
-                self.entries = [e for e in self.entries if e!=ex] + [segment]
-                return self
-        self.entries.append(segment)
-        self.entries = list(set(self.entries))
-        return self
-
-    def extend(self, atom):
-        self.entries.extend(atom.entries)
-        self.entries = list(set(self.entries))
-        return self
-
-    def set(self, perspective_id: int, start_token: Optional[int] = None, end_token: Optional[int] = None):
-        perspective_segment = self.get(perspective_id)
-        
-        if start_token is not None:
-            drift = start_token - perspective_segment.start_token
-            self.entries = [e.set_start_token(e.start_token + drift) for e in self.entries]
-        
-        if end_token is not None:
-            drift = end_token - perspective_segment.end_token
-            self.entries = [e.set_end_token(e.end_token + drift) for e in self.entries]
-
-        self._filter_invalid()
-        return self
-
-    def split(self, persp_id, splitidx):  # NB, splitidx inclusive to LEFT
-        return self.copy().set(persp_id, end_token=splitidx), self.copy().set(persp_id, start_token=splitidx+1)
-    
-    def copy(self):
-        return MatchAtom(entries=[e.copy() for e in self.entries])
-
-    def filter_solutions(self, allowed_soln_ids):
-        return MatchAtom(
-            [e.copy() for e in self.entries if e.soln_id in allowed_soln_ids]
-        )
-
-    @property
-    def is_empty(self):
-        return len(self.entries) == 0
 
 def marginal_atomize_match(persp_id: int, existing_matches: List[MatchAtom], new_atom: MatchAtom):
 
@@ -238,6 +116,4 @@ def build_atomized_segments(tcmp):
                 new_atom
             )
     return soln_atoms, soln_segms
-
-
 

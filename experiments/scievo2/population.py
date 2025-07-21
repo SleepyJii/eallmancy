@@ -65,14 +65,16 @@ class Population:
         art = ttrace.list[-1] ## TODO: better way to handle this
 
         if art.is_solution:
+            non_soln_nodes = {n for n, d in ttrace.graph.nodes(data=True) if not d['artifact'].is_solution}
+            soln_only_G = ttrace.graph.subgraph(set(ttrace.graph.nodes)-non_soln_nodes)
 
             # update localized averages for refine operation
             if math.isinf(art.fitness):
                 local_fitness_sum, local_fitness_cnt = 0, 0
             else:
                 local_fitness_sum, local_fitness_cnt = art.fitness, 1
-            all_nodes = ttrace.graph.nodes(data=True)
-            for nghbr_id, dist in nx.single_source_shortest_path_length(ttrace.graph, art.trace_id, cutoff=1).items():
+            all_nodes = soln_only_G.nodes(data=True)
+            for nghbr_id, dist in nx.single_source_shortest_path_length(soln_only_G, art.trace_id, cutoff=1).items():
                 nghbr_ddict = all_nodes[nghbr_id]
                 if nghbr_id == art.trace_id:
                     continue
@@ -93,16 +95,18 @@ class Population:
         art = ttrace.list[-1] ## TODO: better way to handle this
 
         if art.is_solution:
+            non_soln_nodes = {n for n, d in ttrace.graph.nodes(data=True) if not d['artifact'].is_solution}
+            soln_only_G = ttrace.graph.subgraph(set(ttrace.graph.nodes)-non_soln_nodes)
 
             # update heritage distances
             self.ancestor_mapdists[art.trace_id] = {
-                b: nx.shortest_path_length(ttrace.graph, source=b, target=art.trace_id)
-                for b in nx.ancestors(ttrace.graph, art.trace_id).union({art.trace_id})
+                b: nx.shortest_path_length(soln_only_G, source=b, target=art.trace_id)
+                for b in nx.ancestors(soln_only_G, art.trace_id).union({art.trace_id})
             }
-            for _m in ttrace.graph.nodes:
+            for _m in soln_only_G.nodes:
                 if _m != art.trace_id:
                     n, m = max(art.trace_id, _m), min(art.trace_id, _m)
-                    self.heritage_distances[(n,m)] = heritage_distance(ttrace.graph, self.ancestor_mapdists, n, m)
+                    self.heritage_distances[(n,m)] = heritage_distance(soln_only_G, self.ancestor_mapdists, n, m)
         
 
     def update_idea_extraction(self, ttrace, engine):
@@ -111,6 +115,8 @@ class Population:
         art = ttrace.list[-1] ## TODO: better way to handle this
         # find heritage radius to artifact
 
+
+        ## TODO: solution filtered graph
         local_neighborhood = list(set(
             [
                 {a,b}.difference({art.trace_id}).pop() 
@@ -133,8 +139,11 @@ class Population:
 
         self.update_idea_extraction(ttrace, self._engine)
 
-        self.last_seen_solutions = ttrace.list
-        self.last_seen_graph = ttrace.graph
+        self.last_seen_solutions = [a for a in ttrace.list if a.is_solution]
+
+        non_soln_nodes = {n for n, d in ttrace.graph.nodes(data=True) if not d['artifact'].is_solution}
+        soln_only_G = ttrace.graph.subgraph(set(ttrace.graph.nodes)-non_soln_nodes)
+        self.last_seen_graph = soln_only_G
 
 
 

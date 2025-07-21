@@ -1,10 +1,15 @@
 
 import re
+import math
 from typing import Dict, List
+import networkx as nx
+from statistics import median
 
 from trace_analysis.segm_printing import simple_segm_substr
 from eallmancy.artifacts.artifact import Artifact
 from eallmancy.engine.llm_solution_engine_v3 import EngineV3
+from eallmancy.engine.engine_trace import EngineTrace
+from trace_analysis.atomization import MatchAtom
 
 
 
@@ -76,4 +81,89 @@ This list should be in markdown format starting with solution indices in a code 
 """
     art, _ = engine.build_artifact(prmpt, DistilledIdeaClusters, register=False)
     return art
+
+
+
+
+class DistilledIdea(Artifact):
+    def __init__(self, response, *args, **kwargs):
+        super().__init__(response, *args, **kwargs)
+
+        self.is_solution = False
+        self.solution_members = []
+        self.originating_atom_id = None
+        self.snippet_example_str = ''
+    
+    @property
+    def analysis(self):
+        return self.raw_resp
+    
+    @property
+    def entries(self):
+        return self.clusters
+    
+    def proxy_fitness(self, node_graph: nx.DiGraph) -> float:
+        # figure out how we should consider the 'fitness' of this distilled idea
+        # naive float return, treated like a fitness for purposes of scievo parent selection
+        ftns = [node_graph[m]['artifact'].fitness for m in self.solution_members]
+        ftns = [f for f in ftns if not math.isinf(f)]
+        if len(ftns) == 0:
+            return median([d['artifact'].fitness for n,d in node_graph.nodes(data=True).items()])
+        else:
+            return sum(ftns) * 1.0 / len(ftns)
+
+
+
+NEWL_ = "\n"
+
+def build_idea_distillation(atm, ttrace: EngineTrace, engine: EngineV3, tcmp):
+    def _grab_snippet(s_entry):
+        prelude = f"Solution {s_entry.soln_id} [SNIPPET]"
+        text = (simple_segm_substr(
+            ttrace[s_entry.soln_id].program,
+            s_entry.start_token, s_entry.end_token,
+            tcmp['submissions'][s_entry.soln_id]['tokenList']
+        ))
+        return f'{prelude}{NEWL_}```{NEWL_}{text}{NEWL_}```'
+    # pprint = _prmpt_print_atom(atm, ttrace, tcmp)
+    pprint = NEWL_.join([_grab_snippet(e) for e in atm.entries])
+    prmpt = f"""
+A team has been working on implementations of the following function:
+```\n{engine._problem_spec.template}```
+
+They have produced many prototypes, see pertinent examples below:
+{NEWL_.join([f'{ttrace[sidx]}' for sidx in atm.solution_members()])}
+
+After some analysis, we have noticed the following code snippets are very similar:
+{pprint}
+
+Without referencing any specific solutions by id, specify the core formulas or algorithmic concepts present in the code snippets as a cluster of implementation concepts.
+You should specify any commonly appearing formulas - assume the reader cannot see the original snippets. 
+Your explanation should make clear how implementations containing a matching code snippet would differ from other implementations, and the role that the similar code snippets have with regards to their originating prototypes. Do not give qualitative feedback.
+
+EXAMPLE1 (your answer can be longer than these as necessary, but with similar content):
+```
+The cluster's members use SOME_FUNCTION to adjust SOME_PARAMETER in the following form `EQUATION_HERE`.
+Variations can include SOME_MODIFICATION, SOME_OTHER_MOD, or SOMETHING_ELSE.
+```
+
+EXAMPLE2
+```
+The cluster's members are implemented as SOME_CODE_STRUCTURE, where SOME_CHARACTERISTIC is frequently present.
+Examples for SOME_DETAIL include SOME_METHOD_A, SOME_METHOD_B, or SOME_METHOD_C.
+```
+
+Make sure to keep your focus on the content of the code snippets, using the overall solutions only for contextual details.
+Do not give markdown headers, just provide your analysis in several or fewer short paragraphs along with equations or short code examples.
+"""
+    art, _ = engine.build_artifact(prmpt, DistilledIdea, register=False)
+    art.solution_members = atm.solution_members()
+    art.originating_atom_id = atm.cache.get('id', None)
+    art.snippet_example_str = pprint
+
+    # TODO: remove registration! really should be handled elsewhere...
+    engine.register_artifact(art, parents=[ttrace[p] for p in art.solution_members], disable_hooks=True, operation_name="IdeaDistillation")
+
+    return art
+
 
