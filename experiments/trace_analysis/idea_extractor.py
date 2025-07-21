@@ -2,10 +2,11 @@
 import requests
 import numpy as np
 from collections import defaultdict
-from itertools import chain
+import itertools
+from itertools import chain, count
 import os
 import re
-from typing import Dict
+from typing import Dict, List
 
 from eallmancy.artifacts.artifact import Artifact
 from eallmancy.engine.llm_solution_engine_v3 import EngineV3
@@ -13,7 +14,7 @@ from eallmancy.engine.llm_solution_engine_v3 import EngineV3
 from trace_analysis.greedy_salidea import *
 from trace_analysis.atomization import *
 from trace_analysis.segm_printing import *
-from trace_analysis.idea_distillation import DistilledIdeaClusters, distill_atom_clusters
+from trace_analysis.idea_distillation import DistilledIdeaClusters, distill_atom_clusters, DistilledIdea, build_idea_distillation
 
 
 
@@ -118,12 +119,9 @@ def get_openai_embeddings(
         res[idx] = cached_embeddings[prompts[idx]]
     return res
     
-    # return np.array(embedding)
 
 
 def codeemb_filter_atom(persp_id: int, atm, ttrace, tcmp, cutoff=0.95, timeout=60, cached_embeddings=dict()):
-
-    
     
     ttt = {
         k: v
@@ -143,27 +141,8 @@ def codeemb_filter_atom(persp_id: int, atm, ttrace, tcmp, cutoff=0.95, timeout=6
         else:
             refiltered_solns.append(k)
     
-    return atm.filter_solutions(refiltered_solns)
+    return atm.filter_solutions(refiltered_solns).update_cache(embedding=sum(ttt[tk] for tk in refiltered_solns) / len(refiltered_solns))
 
-
-def calc_atom_codeembsim(persp_id: int, atm, ttrace, tcmp, timeout=60, cached_embeddings=dict()):    
-    
-    ttt = {
-        k: v
-        for k,v in simple_atom_substrs(atm, ttrace, tcmp).items()
-    }
-    ttk = list(ttt.keys())
-    ttv = [ttt[k] for k in ttk]
-    tte = get_openai_embeddings(ttv, cached_embeddings=cached_embeddings)
-    ttt = {k: e for k, e in zip(ttk, tte)}
-    
-    simsc = dict()
-    for k in ttt.keys():
-        if ttt[persp_id].shape != ttt[k].shape:
-            simsc[k] = 0.
-        else:
-            simsc[k] = cosine_sim(ttt[persp_id], ttt[k])
-    return simsc
 
 def glom_cont_segments(seg_ls):
     seg_ls = [s for s in seg_ls if s is not None]
@@ -177,7 +156,36 @@ def glom_cont_segments(seg_ls):
     return new_seg
 
 
+def should_merge(new_atm: MatchAtom, old_atm: MatchAtom, applied_soln_filter=None, required_overlap=0.9, required_cosinesim=0.95):
+    
+    my_solns = new_atm.solution_members()
+    old_solns = old_atm.solution_members()
+    overlap_solutions = set(my_solns).intersection(old_solns).intersection(applied_soln_filter or my_solns)
+    # if overlap solutions all have overlapping segments..
+    for s in overlap_solutions:
+        # confirm that relevant entries are overlapping, or raise
+        my_seg: SolutionSegment = new_atm.get(s)
+        ot_seg: SolutionSegment = old_atm.get(s)
+        if my_seg.start_token > ot_seg.end_token or my_seg.end_token < ot_seg.start_token:
+            return False
+        
+        ## ALLOWING 90% OVERLAP!!!!    TODO: is this actually OK?
+        metric = (min(my_seg.end_token, ot_seg.end_token) - max(my_seg.start_token, ot_seg.start_token)) / min(my_seg.length, ot_seg.length)
+        if metric < required_overlap:
+            return False
+        
+        if cosine_sim(new_atm.cache['embedding'], old_atm.cache['embedding']) < required_cosinesim:
+            return False
 
+    # and disjoint solutions only in newer, where disjoint additions are newer than older...
+    old_atm_age = max(old_solns)
+    for s in set(my_solns).difference(set(old_solns)):
+        if s < old_atm_age: # solution old enough to be seen by older
+            if applied_soln_filter is not None and s in applied_soln_filter: # solution 
+                return False
+    return True
+
+    # then good to merge.
 
 ## new rolling cached approach
 
@@ -185,35 +193,60 @@ class ClusteredSegmentsMap:
     def __init__(self):
         self._soln_map = defaultdict(lambda : [])
         self._segset_map = defaultdict(lambda : [])
-    
-    def add(self, atm):
+        self._active_map = dict()
+        self._id_generator = count()
+
+    def remove(self, atm):
         segset = frozenset(atm.originalseg_members())
         solns = atm.solution_members()
 
-        # doing a naive check for match collisions - latest member addition should be highest trace_id
-        # therefore, can check for existing subset clusters by checking if we have segset \ last_id
-        last_id = max(solns)
-        all_other_ids = list(set(solns).difference({last_id}))
-        _sub_segset = frozenset(atm.filter_solutions(all_other_ids).originalseg_members())
+        segset_idx = next((i for i, x in enumerate(self._segset_map[segset]) if x == atm), None)
+        if segset_idx is not None:
+            del self._segset_map[segset][segset_idx]
 
-        if len(_sub_segset)>1 and _sub_segset in self._segset_map.keys():
+        for s in solns:
+            soln_idx = next((i for i, x in enumerate(self._soln_map[s]) if x == atm), None)
+            if soln_idx is not None:
+                del self._soln_map[s][soln_idx]
+        
+        if atm.cache.get('id', None):
+            del self._active_map[atm.cache['id']]
 
-            # checking for any cluster that has the same length and sequence matching for some member seq
-            for sa_idx, sub_atm in reversed(list(enumerate(self._segset_map[_sub_segset]))):
-                _other_idx = sub_atm.solution_members().pop()
-                a, b = atm.get(_other_idx), sub_atm.get(_other_idx)
-                if a.start_token == b.start_token and a.end_token == b.end_token:
-                    # can conclude we want to remove sub_atm because its strongly dominated by the new atm
-                    del self._segset_map[_sub_segset][sa_idx]
-
-        # now merge in the latest new atom
-        for soln_id in solns:
+    def add(self, atm):
+        new_idx = next(self._id_generator)
+        atm.update_cache(id=new_idx)
+        segset = frozenset(atm.originalseg_members())
+        for soln_id in atm.solution_members():
             self._soln_map[soln_id] = list(set(self._soln_map[soln_id]+[atm]))
         self._segset_map[segset] = list(set(self._segset_map[segset]+[atm]))
+        self._active_map[new_idx] = atm
+    
+    def merge_add(self, atm: MatchAtom, applied_soln_filter=None):
+        segset = frozenset(atm.originalseg_members())
+        solns = atm.solution_members()
+
+        for s_id in set(solns).intersection(applied_soln_filter or solns):
+            to_consider_merge = list(self._soln_map[s_id])
+            for s_atm in to_consider_merge:
+                if should_merge(atm, s_atm, applied_soln_filter=applied_soln_filter):
+                    print('\t\tperforming ACCRETE_MERGE')
+                    atm = atm.accrete(s_atm)  # accrete
+                    self.remove(s_atm)  # delete old
+
+        self.add(atm)
+        return atm
     
     def extend(self, atms):
-        for atm in atms:
+        # make sure ordered by max soln id to not mess with age-related logic
+        for atm in sorted(atms, key=lambda a: max(a.solution_members())):
             self.add(atm)
+    
+    def merge_extend(self, atms, applied_soln_filter=None):
+        # make sure ordered by max soln id to not mess with age-related logic
+        added = []
+        for atm in sorted(atms, key=lambda a: max(a.solution_members())):
+            added.append(self.merge_add(atm, applied_soln_filter=applied_soln_filter))
+        return added
     
     def find_solution(self, soln_id):
         self._soln_map.get(soln_id)
@@ -237,6 +270,7 @@ class IdeaExtractorCache:
         self._soln_atoms = defaultdict(lambda : [])
 
         self._clustered_segments = ClusteredSegmentsMap() # defaultdict(lambda : [])
+        self._idea_reflections = dict()
 
         self.ignore_jplagapi_status = kwargs.get('ignore_jplagapi_status', True)
         self.min_match_tokens = kwargs.get('min_match_tokens', 6)
@@ -261,7 +295,7 @@ class IdeaExtractorCache:
 
         # identify clique of new solutions to be compared to the new solution
         if solution_id_filter is None:
-            compare_idxs = [a.trace_id for a in ttrace.list]
+            compare_idxs = [a.trace_id for a in ttrace.list if a.is_solution]
         else:
             compare_idxs = solution_id_filter
 
@@ -394,13 +428,11 @@ class IdeaExtractorCache:
                     continue
                 
                 # we are now finally satisfied with the overlapping sequences being meaningfully similar. append to results list
-                seg_atoms.append(seg_atom.filter_solutions(cluster_mems).set_description(cluster_desc))
+                seg_atoms.append(seg_atom.filter_solutions(cluster_mems, reset_cache=False).set_description(cluster_desc))
         return seg_atoms
 
 
-
-
-    def _scrape_idea_segments(self, persp_id, ttrace, engine, affected_soln_ids=None):
+    def _scrape_idea_segments(self, persp_id, ttrace, engine, affected_soln_ids=None, applied_soln_filter=None):
         new_segments = self.persp_idea_segment_extraction(
                 persp_id, ttrace, engine,
                 exclude_template=True, min_token_len=self.min_match_tokens, min_members=self.min_match_members, ce_cutoff=self.min_match_embeddingsim,
@@ -408,26 +440,32 @@ class IdeaExtractorCache:
                 cached_embeddings=None
             )
 
-
-        ## TODO: implement resolution logic here for folding together new and old detected segments
-        pass
-
-
-
-        self._clustered_segments.extend( new_segments )
-        return new_segments
+        return self._clustered_segments.merge_extend( new_segments, applied_soln_filter=applied_soln_filter )
     
+    def _update_idea_distillations(self, new_idea_segments: List[MatchAtom], ttrace, engine: EngineV3):
+        new_refl = dict()
+        active_ids = list(self._clustered_segments._active_map.keys())
+        for k in active_ids:
+            if k in self._idea_reflections.keys():
+                new_refl[k] = self._idea_reflections[k]
+            else:
+                new_atm = self._clustered_segments._active_map[k]
+                new_refl[new_atm.cache['id']] = build_idea_distillation(new_atm, ttrace, engine, self._tcmp)
+        self._idea_reflections = new_refl
 
     def hook(self, ttrace, engine: EngineV3, solution_id_filter=None):
         # we should have exactly one new solution
-        print(f"HOOKUP {len(ttrace.list)}")
         new_soln = ttrace.list[-1]
         new_soln_id = new_soln.trace_id
+
+        if not new_soln.is_solution:
+            return
 
 
         new_comparisons = self._update_jplag(new_soln, ttrace, solution_id_filter=solution_id_filter)
         affected_soln_ids = self._update_atoms(new_persp_id=new_soln_id, new_comparisons=new_comparisons)
-        new_segments = self._scrape_idea_segments(persp_id=new_soln_id, ttrace=ttrace, engine=engine, affected_soln_ids=affected_soln_ids)
+        new_idea_segments = self._scrape_idea_segments(persp_id=new_soln_id, ttrace=ttrace, engine=engine, affected_soln_ids=affected_soln_ids, applied_soln_filter=solution_id_filter)
+        self._update_idea_distillations(new_idea_segments, ttrace=ttrace, engine=engine)
 
         return
 

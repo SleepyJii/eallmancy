@@ -147,24 +147,26 @@ class EngineV3:
         self.trace = None
         return tr
     
-    def register_artifact(self, arte: Artifact, parents: List[Artifact] = [], **tags):
+    def register_artifact(self, arte: Artifact, parents: List[Artifact] = [], disable_hooks=False, **tags):
         if not self.is_running:
             raise Exception("cannot generate artifact when the engine has not been started!")
         
         if self.trace is not None:
             self.trace._register_trace(parents, arte, **tags)
-            for hook in self.hooks:
-                hook(self.trace)
+            if not disable_hooks:
+                for hook in self.hooks:
+                    hook(self.trace)
         
-    async def async_register_artifact(self, arte: Artifact, parents: List[Artifact] = [], **tags):
+    async def async_register_artifact(self, arte: Artifact, parents: List[Artifact] = [], disable_hooks=False, **tags):
         if not self.is_running:
             raise Exception("cannot generate artifact when the engine has not been started!")
         
         if self.trace is not None:
             self.trace._register_trace(parents, arte, **tags)
-            for hook in self.hooks:
-                # because we are in async mode, assuming async hooks
-                await hook(self.trace)
+            if not disable_hooks:
+                for hook in self.hooks:
+                    # because we are in async mode, assuming async hooks
+                    await hook(self.trace)
 
 
     def build_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):

@@ -17,7 +17,7 @@ from experiments.scievo2.operations.repair_operation import RepairOperation
 from experiments.scievo2.operations.seed_operation import SeedOperation
 from experiments.scievo2.operations.refine_operation import RefineOperation
 from experiments.scievo2.operations.crossover_operation import CrossoverOperation
-from experiments.scievo2.operations.ideate_operation import IdeateOperation
+from experiments.scievo2.operations.ideate_operation import IdeateDivergentOperation
 
 
 
@@ -72,6 +72,9 @@ class SciEvo:
             ),
             crossover=(
                 CrossoverOperation(self.engine), op_freqs.get('crossover', 1)
+            ),
+            ideate_divergent=(
+                IdeateDivergentOperation(self.engine), op_freqs.get('ideate_divergent', 1)
             ),
         )
         self.config = dict(
