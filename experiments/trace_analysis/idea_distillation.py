@@ -102,13 +102,13 @@ class DistilledIdea(Artifact):
     def entries(self):
         return self.clusters
     
-    def proxy_fitness(self, node_graph: nx.DiGraph) -> float:
+    def proxy_fitness(self, graph_nodes) -> float:
         # figure out how we should consider the 'fitness' of this distilled idea
         # naive float return, treated like a fitness for purposes of scievo parent selection
-        ftns = [node_graph[m]['artifact'].fitness for m in self.solution_members]
+        ftns = [graph_nodes[m]['artifact'].fitness for m in self.solution_members]
         ftns = [f for f in ftns if not math.isinf(f)]
         if len(ftns) == 0:
-            return median([d['artifact'].fitness for n,d in node_graph.nodes(data=True).items()])
+            return median([d['artifact'].fitness for n,d in graph_nodes.items()])
         else:
             return sum(ftns) * 1.0 / len(ftns)
 
