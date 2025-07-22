@@ -9,3 +9,4 @@ cobench
 *.pk
 .ipynb_checkpoints/
 experiments/.ipynb_checkpoints/atomization-checkpoint.py experiments/.ipynb_checkpoints/greedy_salidea-checkpoint.py experiments/.ipynb_checkpoints/jplag-checkpoint.ipynb experiments/.ipynb_checkpoints/proto0-checkpoint.ipynb experiments/.ipynb_checkpoints/segm_printing-checkpoint.py experiments/.ipynb_checkpoints/seoh_analysis-checkpoint.ipynb experiments/.ipynb_checkpoints/seoh_sims-checkpoint.ipynb
+eallmancy/__pycache__/
