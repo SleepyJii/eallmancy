@@ -11,7 +11,7 @@ def compare_many(min_token_match=7, **solns):
     resp = requests.post(
         f"http://localhost:{os.environ.get('JPLAG_API_PORT', 9995)}/compare",
         json={'language':'python3', 'submissions':solns, 'minTokenMatch': min_token_match},
-        timeout=30, retries=3
+        timeout=30, max_retries=3
     )
     
     return json.loads(resp.content.decode('utf-8'))
