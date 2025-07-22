@@ -62,12 +62,13 @@ class JPlagApiHandler:
             self._cleaned_up = True
         
         print("Shutting down JPlag API...")
-        if self.process.poll() is None:  # still running
-            self.process.terminate()
-            try:
-                self.process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
+        if self.process is not None:
+            if self.process.poll() is None:  # still running
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
         print("Shutdown complete.")
 
     def __del__(self):
