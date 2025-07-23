@@ -9,14 +9,15 @@ from eallmancy import SinglePartSolution, ProblemSpec
 import os
 import re
 
-
-engine = EngineV3(
-    api_spec=dict(
+OPENAI_API_SPEC = dict(
         host="api.openai.com",
-        key=os.environ['OPENAI_API_KEY'],
+        key=os.environ.get('OPENAI_API_KEY', ''),
         model="gpt-4o-mini",
         timeout=20
-    ),
+)    
+
+engine = EngineV3(
+    api_spec=OPENAI_API_SPEC,
     problem_spec=None
 )
 
@@ -134,13 +135,13 @@ class Population:
             if funcs == []:
                 return [np.random.choice(self.members) for _ in range(k)]
             else:
-                func = sorted(funcs, key=lambda f: f.evaluation.fitness, reverse=False)
+                func = sorted(funcs, key=lambda f: f.evaluation.fitness, reverse=engine._problem_spec.maximization)
                 p = np.array([1 / (r + len(func)) for r in range(len(func))])
                 p /= np.sum(p)
                 return [np.random.choice(func, p=p) for _ in range(k)]
 
     def survival_filter(self):
-            self.members = sorted(self.members, key=lambda f: f.evaluation.fitness, reverse=False)[:self.popsize]
+            self.members = sorted(self.members, key=lambda f: f.evaluation.fitness, reverse=engine._problem_spec.maximization)[:self.popsize]
     
     def register(self, solns):
         with self.lock:
@@ -156,7 +157,7 @@ class Population:
             return self.n_samples > self.max_samples or self.n_generations > self.max_generations
 
 
-def _eoh_worker(population: Population, e1_per_gen=1 ,e2_per_gen=1, m1_per_gen=1, m2_per_gen=1, num_e1_parents=2, num_e2_parents=2):
+def _eoh_worker(population: Population, e1_per_gen=1 ,e2_per_gen=1, m1_per_gen=1, m2_per_gen=1, num_e1_parents=2, num_e2_parents=2, **kwargs):
     while not population.eoh_completed():
         for _ in range(e1_per_gen):
             population.register([e1_solution(*population.selection(num_e1_parents))])
@@ -168,11 +169,34 @@ def _eoh_worker(population: Population, e1_per_gen=1 ,e2_per_gen=1, m1_per_gen=1
             population.register([m2_solution(*population.selection(1))])
 
 
-def eoh(num_initial_samples=3, pop_size=5, max_samples=10, max_generations=10, problem_spec: ProblemSpec=None, n_workers=1, **kwargs) -> SinglePartSolution:
+# def eoh(num_initial_samples=3, pop_size=5, max_samples=10, max_generations=10, problem_spec: ProblemSpec=None, n_workers=1, **kwargs) -> SinglePartSolution:
 
-    # this syntactical sugar just lets you specify an optional new problemspec to eoh(..)
-    # specifying the problem spec in the engine constructor is also sufficient
-    with engine.set(problem_spec=problem_spec): 
+#     # this syntactical sugar just lets you specify an optional new problemspec to eoh(..)
+#     # specifying the problem spec in the engine constructor is also sufficient
+#     with engine.set(problem_spec=problem_spec): 
+#         engine.start()
+
+#         population = Population(
+#             [i1_solution() for _ in range(num_initial_samples)],
+#             max_generations=max_generations,
+#             max_samples=max_samples,
+#             popsize=pop_size,
+#         )
+#         sampler_threads = [
+#             Thread(target=_eoh_worker, args=(population,), kwargs=kwargs)
+#             for _ in range(n_workers)
+#         ]
+#         for t in sampler_threads:
+#             t.start()
+#         for t in sampler_threads:
+#             t.join()
+
+#         return min(population.members, key=lambda f: f.fitness)
+
+
+def eoh(num_initial_samples=3, pop_size=5, max_samples=10, max_generations=1e9, problem_spec: ProblemSpec=None, api_spec=OPENAI_API_SPEC, n_workers=1, **kwargs):
+
+    with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
         engine.start()
 
         population = Population(
@@ -190,7 +214,7 @@ def eoh(num_initial_samples=3, pop_size=5, max_samples=10, max_generations=10, p
         for t in sampler_threads:
             t.join()
 
-        return min(population.members, key=lambda f: f.fitness)
+        return ec.trace
 
 
 if __name__=="__main__":
