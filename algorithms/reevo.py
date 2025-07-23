@@ -126,7 +126,7 @@ Please write a mutated function `{engine._problem_spec.entrypoint}`, according t
 import random
 
 
-def reevo(pop_size=8, max_samples=30, num_generations=1e9, problem_spec=None, api_spec=None, **kwargs):
+def reevo(pop_size=8, max_samples=30, max_generations=1e9, problem_spec=None, api_spec=None, **kwargs):
 
     n_solns = 0
 
@@ -137,7 +137,7 @@ def reevo(pop_size=8, max_samples=30, num_generations=1e9, problem_spec=None, ap
         n_solns += pop_size
         longterm_refl = None
 
-        for gidx in range(num_generations):
+        for gidx in range(max_generations):
 
             random.shuffle(population)
 
