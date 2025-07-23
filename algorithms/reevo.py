@@ -6,7 +6,7 @@
 
 import os
 
-from eallmancy.engine.llm_solution_engine_v2 import EngineV2
+from eallmancy.engine.llm_solution_engine_v3 import EngineV3
 
 from eallmancy import Artifact, SinglePartSolution, ProblemSpec
 from typing import List, Optional
@@ -14,26 +14,18 @@ import os
 import re
 
 
-engine = EngineV2(
-    api_spec=dict(
+OPENAI_API_SPEC = dict(
         host="api.openai.com",
-        key=os.environ['OPENAI_API_KEY'],
+        key=os.environ.get('OPENAI_API_KEY', ''),
         model="gpt-4o-mini",
         timeout=20
-    ),
+)    
+
+engine = EngineV3(
+    api_spec=OPENAI_API_SPEC,
     problem_spec=None
 )
 
-
-# engine = LLMSolutionEngine(
-#     api_spec=dict(
-#         host="api.openai.com",
-#         key=os.environ['OPENAI_API_KEY'],
-#         model="gpt-4o-mini",
-#         timeout=20
-#     ),
-#     problem_spec=None
-# )
 
 
 ## PROMPT ENG
@@ -71,7 +63,7 @@ Do not give additional explanations, output code only and enclose within a code 
 # @solutionpair_to_reflection
 def comparative_reflection(parenta: SinglePartSolution, parentb: SinglePartSolution) -> Reflection:
     scorea, scoreb = parenta.fitness, parentb.fitness
-    if scorea > scoreb:
+    if (scorea > scoreb) ^ (not engine._problem_spec.maximization):
         better_parent, worse_parent = parenta, parentb
     else:
         better_parent, worse_parent = parentb, parenta
@@ -88,7 +80,7 @@ You respond with some hints for designing better heuristics, based on the two co
 # @engine.prompt_to_solution
 def crossover_solution(parenta: SinglePartSolution, parentb: SinglePartSolution, comp_refl: Reflection) -> SinglePartSolution:
     scorea, scoreb = parenta.fitness, parentb.fitness
-    if scorea > scoreb:
+    if (scorea > scoreb) ^ (not engine._problem_spec.maximization):
         better_parent, worse_parent = parenta, parentb
     else:
         better_parent, worse_parent = parentb, parenta
@@ -134,11 +126,12 @@ Please write a mutated function `{engine._problem_spec.entrypoint}`, according t
 import random
 
 
-def reevo(pop_size=8, max_solutions=30, num_generations=5, problem_spec=None):
+def reevo(pop_size=8, max_samples=30, num_generations=1e9, problem_spec=None, api_spec=None, **kwargs):
 
     n_solns = 0
 
-    with engine.set_problem(problem_spec):  
+    with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
+        engine.start() 
         # initial pop generation
         population = [initial_solution() for _ in range(pop_size)]
         n_solns += pop_size
@@ -168,7 +161,7 @@ def reevo(pop_size=8, max_solutions=30, num_generations=5, problem_spec=None):
             # print('LTREFL\n', longterm_refl)
 
             # elitist mutation, using new heuristics and LT reflections
-            elite_soln = min(crossover_solns, key=lambda ss: ss.fitness)
+            elite_soln = min(crossover_solns, key=lambda ss: ss.fitness * (-1+2*engine._problem_spec.maximization))
             elite_mutated_solns = [
                 elite_mutated_solution(longterm_refl, elite_soln)
                 for _ in range(pop_size - len(crossover_solns))
@@ -177,10 +170,10 @@ def reevo(pop_size=8, max_solutions=30, num_generations=5, problem_spec=None):
             # print('ELITEMUT\n',elite_mutated_solns[0])
             
             population = crossover_solns + elite_mutated_solns
-            if max_solutions > n_solns:
+            if max_samples > n_solns:
                 break
 
-        return min(population, key=lambda sln: sln.fitness)
+        return ec.trace
 
 
 
@@ -205,8 +198,6 @@ if __name__=="__main__":
                 errors = str(e)
             )
 
-        print('starting ReEvo')
-        engine.start_trace()
         
     soln = reevo(
         problem_spec=ProblemSpec(
@@ -217,12 +208,11 @@ if __name__=="__main__":
         )
     )
 
-    print('FINALSOLN')
     print(soln)
 
-    import networkx as nx
-    tgr, tls = engine.dump_trace()
-    print('TRACEGRAPH')
-    nx.write_network_text(tgr)
-    print('collected',len(tls),'solutions')
+    # import networkx as nx
+    # tgr, tls = engine.dump_trace()
+    # print('TRACEGRAPH')
+    # nx.write_network_text(tgr)
+    # print('collected',len(tls),'solutions')
 
