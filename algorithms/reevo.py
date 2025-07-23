@@ -126,7 +126,7 @@ Please write a mutated function `{engine._problem_spec.entrypoint}`, according t
 import random
 
 
-def reevo(pop_size=8, max_samples=30, max_generations=1e9, problem_spec=None, api_spec=None, **kwargs):
+def reevo(pop_size=8, max_samples=30, max_generations=int(1e9), problem_spec=None, api_spec=None, **kwargs):
 
     n_solns = 0
 
@@ -170,7 +170,9 @@ def reevo(pop_size=8, max_samples=30, max_generations=1e9, problem_spec=None, ap
             # print('ELITEMUT\n',elite_mutated_solns[0])
             
             population = crossover_solns + elite_mutated_solns
-            if max_samples > n_solns:
+            population = list(sorted(population, key=lambda sln: sln.fitness, reverse=engine._problem_spec.maximization))[:pop_size]
+
+            if max_samples < len([art for art in ec.trace.list if art.is_solution]):
                 break
 
         return ec.trace
