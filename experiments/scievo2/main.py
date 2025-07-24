@@ -79,7 +79,7 @@ class SciEvo:
         )
         self.config = dict(
             max_samples=30,
-            max_generations=30,
+            max_generations=int(1e9),
             initial_samples=5,
             ignore_jplag_api_status=config.get('ignore_jplag_checking', True),
         )
