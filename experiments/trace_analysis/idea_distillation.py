@@ -23,7 +23,10 @@ class DistilledIdeaClusters(Artifact):
     @staticmethod
     def _parse_md_block(rawtxt):
         
-        md_block = re.findall(r'```[^\n]*\n(.*?)```', rawtxt, re.DOTALL).pop()
+        md_blocks = re.findall(r'```[^\n]*\n(.*?)```', rawtxt, re.DOTALL)
+        if len(md_blocks) == 0:
+            return dict()
+        md_block = md_blocks.pop()
         entries = []
         # iterate through MD list entries, expecting - [1,23] descr
         for grp_ls, grp_descr in re.findall(r'- (\[[^\]]*\])([^\-]*)[\n,$]', md_block):
