@@ -85,7 +85,7 @@ def _softmax(logits: np.ndarray, temperature: float) -> np.ndarray:
     full_logits = np.zeros(logits.shape)
     full_logits[np.isfinite(logits)] = result
     full_logits[~np.isfinite(logits)] = 0.0
-    return result
+    return full_logits
 
 
 class FunIsland:
