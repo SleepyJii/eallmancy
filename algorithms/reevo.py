@@ -104,7 +104,7 @@ Output code only and enclose your code with Python code block: ```python ... ```
     return engine.generate_artifact(pmpt, CrossoverSolution, parents=[parenta, parentb, comp_refl])
 
 # @distilled_reflection
-def longterm_reflection(prev_longterm_refl: LongTermReflection, st_refls: List[ComparativeReflection]) -> DistilledReflection:
+def longterm_reflection(prev_longterm_refl: LongTermReflection, st_refls: List[ComparativeReflection]) -> LongTermReflection:
     st_refls_clean = '\n'.join(map(str,st_refls))
     pmpt = f"""
 Below is your prior long-term reflection on designing heuristics for {engine._problem_spec.description}\n{prev_longterm_refl}\n
