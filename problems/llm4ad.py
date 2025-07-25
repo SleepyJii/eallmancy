@@ -131,11 +131,18 @@ class BactGrowProblemSpec(ProblemSpec):
         _signflips = _id if maximization else _swap_max_min
         tt = BGEvaluation()
         _old_params_descr = "params: Array of numeric constants or parameters to be optimized"
-        _new_params_descr = f"params: Array of numeric constants or parameters to be optimized, has size ({MAX_BG_PARAMS},)"
-        
+        _new_params_descr = f"params: Array of numeric constants or parameters to be optimized, has length {MAX_BG_PARAMS}"
+        #Mathematical function for bacterial growth rate
+        _old_descr = "Mathematical function for bacterial growth rate"
+        _new_descr = f"Mathematical function for bacterial growth rate. All input arrays have the same size (number of samples,) except `params`"
+
         super().__init__(
             description=tt.task_description,
-            template=tt.template_program.replace(_old_params_descr, _new_params_descr),
+            template=(
+                tt.template_program
+                .replace(_old_descr, _new_descr)
+                .replace(_old_params_descr, _new_params_descr)
+            ),
             entrypoint="equation",
             evaluator=reallm_evaluator_func(_signflips(_evaluate_program_fix(tt)), maximization=maximization),
             maximization=maximization
