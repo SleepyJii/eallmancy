@@ -177,7 +177,7 @@ def reevo(pop_size=8, max_samples=30, max_generations=int(1e9), problem_spec=Non
             # print('LTREFL\n', longterm_refl)
 
             # elitist mutation, using new heuristics and LT reflections
-            elite_soln = min(crossover_solns, key=lambda ss: ss.fitness * (-1+2*engine._problem_spec.maximization))
+            elite_soln = min(population+crossover_solns, key=lambda ss: ss.fitness * (-1+2*engine._problem_spec.maximization))
             elite_mutated_solns = [
                 elite_mutated_solution(longterm_refl, elite_soln)
                 for _ in range(pop_size - len(crossover_solns))
@@ -185,7 +185,7 @@ def reevo(pop_size=8, max_samples=30, max_generations=int(1e9), problem_spec=Non
             n_solns += len(elite_mutated_solns)
             # print('ELITEMUT\n',elite_mutated_solns[0])
             
-            population = crossover_solns + elite_mutated_solns
+            population = population + crossover_solns + elite_mutated_solns
             population = list(sorted(population, key=lambda sln: sln.fitness, reverse=engine._problem_spec.maximization))[:pop_size]
 
             if max_samples < len([art for art in ec.trace.list if art.is_solution]):
