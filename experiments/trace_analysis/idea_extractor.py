@@ -141,7 +141,7 @@ def codeemb_filter_atom(persp_id: int, atm, ttrace, tcmp, cutoff=0.95, timeout=6
         else:
             refiltered_solns.append(k)
     
-    if len(refitered_solns) == 0:
+    if len(refiltered_solns) == 0:
         avg_emb = np.zeros(ttt[persp_id].shape)
     else:
         avg_emb = sum(ttt[tk] for tk in refiltered_solns) / len(refiltered_solns)
