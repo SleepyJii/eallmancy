@@ -76,7 +76,7 @@ Below are two `{engine._problem_spec.entrypoint}` functions for "{engine._proble
 You are provided with two code versions below, where the second version performs better than the first one.\n
 [Worse code]\n{worse_parent}\n
 [Better code]\n{better_parent}\n
-You respond with some hints for designing better heuristics, based on the two code versions and using less than 20 words.
+You respond with some hints for designing better heuristics, based on the two code versions and using less than 20 words. Your suggestions should *only* pertain to designing the core methodology, do not propose arbitrary data vaildations or quality of life improvements.
 *Make sure to bracket your response in <<>>
 """
     return engine.generate_artifact(pmpt, ComparativeReflection, parents=[parenta, parentb])
