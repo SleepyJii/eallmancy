@@ -141,7 +141,11 @@ def codeemb_filter_atom(persp_id: int, atm, ttrace, tcmp, cutoff=0.95, timeout=6
         else:
             refiltered_solns.append(k)
     
-    return atm.filter_solutions(refiltered_solns).update_cache(embedding=sum(ttt[tk] for tk in refiltered_solns) / len(refiltered_solns))
+    if len(refitered_solns) == 0:
+        avg_emb = np.zeros(ttt[persp_id].shape)
+    else:
+        avg_emb = sum(ttt[tk] for tk in refiltered_solns) / len(refiltered_solns)
+    return atm.filter_solutions(refiltered_solns).update_cache(embedding=avg_emb)
 
 
 def glom_cont_segments(seg_ls):
