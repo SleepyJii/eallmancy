@@ -30,6 +30,12 @@ engine = EngineV3(
 
 ## PROMPT ENG
 
+class CrossoverSolution(SinglePartSolution):
+    pass
+
+class EliteSolution(SinglePartSolution):
+    pass
+
 class Reflection(Artifact):
     def __init__(self, response: str, *args, **kwargs):
         super().__init__(response, *args, **kwargs)
@@ -38,13 +44,11 @@ class Reflection(Artifact):
     def __str__(self):
         return f"{self.thought}"
 
-class DistilledReflection(Artifact):
-    def __init__(self, response: str, *args, **kwargs):
-        super().__init__(response, *args, **kwargs)
-        self.thought = (re.findall(r'<<(.*)>>', response) or [None])[-1]
+class ComparativeReflection(Reflection):
+    pass
 
-    def __str__(self):
-        return f"{self.thought}"
+class LongTermReflection(Reflection):
+    pass
 
 
 # solutionpair_to_reflection = engine.prompt_to_reflection.add_output(observation=r'<<(.*)>>')
@@ -75,10 +79,10 @@ You are provided with two code versions below, where the second version performs
 You respond with some hints for designing better heuristics, based on the two code versions and using less than 20 words.
 *Make sure to bracket your response in <<>>
 """
-    return engine.generate_artifact(pmpt, Reflection, parents=[parenta, parentb])
+    return engine.generate_artifact(pmpt, ComparativeReflection, parents=[parenta, parentb])
 
 # @engine.prompt_to_solution
-def crossover_solution(parenta: SinglePartSolution, parentb: SinglePartSolution, comp_refl: Reflection) -> SinglePartSolution:
+def crossover_solution(parenta: SinglePartSolution, parentb: SinglePartSolution, comp_refl: ComparativeReflection) -> SinglePartSolution:
     scorea, scoreb = parenta.fitness, parentb.fitness
     if (scorea > scoreb) ^ (not engine._problem_spec.maximization):
         better_parent, worse_parent = parenta, parentb
@@ -90,12 +94,17 @@ Write a `{engine._problem_spec.entrypoint}` function for "{engine._problem_spec.
 [Better code]\n{better_parent}\n
 [Reflection]\n{comp_refl}\n
 [Improved code]
-Please write an improved function `{engine._problem_spec.entrypoint}`, according to the reflection. Output code only and enclose your code with Python code block: ```python ... ```.
+Please write an improved function `{engine._problem_spec.entrypoint}`, taking into account insights from the reflection.
+Make sure your code implements the same function signature as the template below:
+```python
+{engine._problem_spec.template}
+```
+Output code only and enclose your code with Python code block: ```python ... ```.
 """
-    return engine.generate_artifact(pmpt, SinglePartSolution, parents=[parenta, parentb, comp_refl])
+    return engine.generate_artifact(pmpt, CrossoverSolution, parents=[parenta, parentb, comp_refl])
 
 # @distilled_reflection
-def longterm_reflection(prev_longterm_refl: DistilledReflection, st_refls: List[Reflection]) -> DistilledReflection:
+def longterm_reflection(prev_longterm_refl: LongTermReflection, st_refls: List[ComparativeReflection]) -> DistilledReflection:
     st_refls_clean = '\n'.join(map(str,st_refls))
     pmpt = f"""
 Below is your prior long-term reflection on designing heuristics for {engine._problem_spec.description}\n{prev_longterm_refl}\n
@@ -103,21 +112,26 @@ Below are some newly gained insights.\n{st_refls_clean}\n
 Write constructive hints for designing better heuristics, based on prior reflections and new insights and using less than 50 words.
 *Make sure to bracket your constructive response in <<>>
 """
-    return engine.generate_artifact(pmpt, DistilledReflection, parents=[prev_longterm_refl, *st_refls])
+    return engine.generate_artifact(pmpt, LongTermReflection, parents=[prev_longterm_refl, *st_refls])
 
 # @engine.prompt_to_solution
-def elite_mutated_solution(longterm_refl: DistilledReflection, elite_soln: SinglePartSolution):
+def elite_mutated_solution(longterm_refl: LongTermReflection, elite_soln: SinglePartSolution):
     pmpt = f"""
 Write a `{engine._problem_spec.entrypoint}` function for "{engine._problem_spec.description}"\n
 [Prior reflection]\n{longterm_refl}\n
 [Code]{elite_soln}\n
 [Improved code]
-Please write a mutated function `{engine._problem_spec.entrypoint}`, according to the reflection. Output code only and enclose your code with Python code block: ```python ... ```.
+Please write a mutated function `{engine._problem_spec.entrypoint}`, taking into account insights from the reflection.
+Make sure your code implements the same function signature as the template below:
+```python
+{engine._problem_spec.template}
+```
+Output code only and enclose your code with Python code block: ```python ... ```.
 """
     _par = [elite_soln]
     if longterm_refl is not None:
         _par.append(longterm_refl)
-    return engine.generate_artifact(pmpt, SinglePartSolution, parents=_par)
+    return engine.generate_artifact(pmpt, EliteSolution, parents=_par)
     
 
 
