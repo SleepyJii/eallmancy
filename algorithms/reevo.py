@@ -158,6 +158,8 @@ def reevo(pop_size=8, max_samples=30, max_generations=int(1e9), problem_spec=Non
             # short term reflection, compare current population solns
             comparative_refls = []
             for idxa in range(0, len(population), 2):
+                if idxa+1 >= len(population):
+                    break
                 comparative_refls.append(comparative_reflection(population[idxa], population[idxa+1]))
                 # print('COMPARREFL\n',comparative_refls[-1])
             
