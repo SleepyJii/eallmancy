@@ -18,7 +18,7 @@ from experiments.trace_analysis.idea_distillation import DistilledIdea
 class IdeateDivergentOperation(Operation):
     async def select_parents(self, pop: Population):
         async with pop.lock:
-            nodes = pop.lineage_graph.nodes(data=True)
+            nodes = dict(pop.lineage_graph.nodes(data=True))
 
             active_ideas: List[DistilledIdea] = list(pop.idea_extractor_cache._idea_reflections.values())
 
