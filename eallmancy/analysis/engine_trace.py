@@ -5,6 +5,7 @@ import itertools
 from eallmancy.artifacts.artifact import Artifact
 from eallmancy.evaluation.evaluation import Evaluation
 from eallmancy.analysis.trace_analysis import TraceAnalysis
+from dataclasses import dataclass
 from typing import Dict, List
 from pathlib import Path
 
@@ -12,16 +13,30 @@ from threading import Lock, Thread
 import pickle as pk
 
 
+@dataclass
+class StaticProblemSpec:
+    description: str
+    template: str
+    entrypoint: str
+    maximization: bool
+    eval_timeout: int
+
+    @classmethod
+    def from_problem_spec(cls, ps):
+        return cls(
+            ps.description, ps.template, ps.entrypoint, ps.maximization, ps.eval_timeout
+        )
+
 
 class EngineTrace:
     def __init__(self, problem_spec, trace_analysis=False, **kwargs):
         self._id_generator = itertools.count()
-        self.problem_spec = problem_spec
+        self.problem_spec = StaticProblemSpec.from_problem_spec(problem_spec)
         self.trace_graph = nx.DiGraph()
         self.trace_list = []
         self.lock = Lock()
 
-        self.trace_analysis = None if not trace_analysis else TraceAnalysis(ps=problem_spec, **kwargs)
+        self.trace_analysis = None if not trace_analysis else TraceAnalysis(ps=self.problem_spec, **kwargs)
 
     @property
     def graph(self):
