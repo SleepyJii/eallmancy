@@ -14,7 +14,7 @@ import networkx as nx
 
 from experiments.scievo2.operations.utils import ancestor_mapdists, latest_common_ancestor, heritage_distance, heritage_distances
 
-from experiments.trace_analysis.idea_extractor import IdeaExtractorCache
+from eallmancy.analysis.trace_analysis.idea_extractor import IdeaExtractorCache
 
 
 
@@ -130,7 +130,7 @@ class Population:
 
         self.idea_extractor_cache.hook(ttrace, engine, solution_id_filter=local_neighborhood)
 
-    async def hook(self, ttrace):
+    async def hook(self, new_arte, ttrace):
         ## THIS IS WHAT WE WILL GET EVERY TIME A TRACE UPDATES
         
         self.update_localized_fitnesses(ttrace)

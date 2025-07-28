@@ -1,0 +1,5 @@
+
+from eallmancy.analysis.trace_analysis.atomization.match_atom import MatchAtom
+from eallmancy.analysis.trace_analysis.atomization.solution_segment import SolutionSegment
+from eallmancy.analysis.trace_analysis.atomization.atomize import marginal_atomize_match, build_atomized_segments
+

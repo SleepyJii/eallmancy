@@ -5,11 +5,9 @@ from typing import Dict, List
 import networkx as nx
 from statistics import median
 
-from trace_analysis.segm_printing import simple_segm_substr
 from eallmancy.artifacts.artifact import Artifact
-from eallmancy.engine.llm_solution_engine_v3 import EngineV3
-from eallmancy.engine.engine_trace import EngineTrace
-from trace_analysis.atomization import MatchAtom
+from eallmancy.analysis.trace_analysis.atomization import MatchAtom
+from eallmancy.analysis.trace_analysis.segm_printing import simple_segm_substr
 
 
 
@@ -68,7 +66,7 @@ def _prmpt_print_atom(atm, ttrace, subm_stats):
     return ('\n'.join(str_lines))
 
 
-def distill_atom_clusters(atm, ttrace, engine: EngineV3, tcmp: Dict):
+def distill_atom_clusters(atm, ttrace, engine, tcmp: Dict):
     prmpt = f"""
 A team of scientists have been working on implementations of the following function:
 ```\n{engine._problem_spec.template}```
@@ -119,7 +117,8 @@ class DistilledIdea(Artifact):
 
 NEWL_ = "\n"
 
-def build_idea_distillation(atm, ttrace: EngineTrace, engine: EngineV3, tcmp):
+def build_idea_distillation(atm, ttrace, engine, tcmp):
+
     def _grab_snippet(s_entry):
         prelude = f"Solution {s_entry.soln_id} [SNIPPET]"
         text = (simple_segm_substr(

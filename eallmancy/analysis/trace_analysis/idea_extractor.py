@@ -9,12 +9,11 @@ import re
 from typing import Dict, List
 
 from eallmancy.artifacts.artifact import Artifact
-from eallmancy.engine.llm_solution_engine_v3 import EngineV3
 
-from trace_analysis.greedy_salidea import *
-from trace_analysis.atomization import *
-from trace_analysis.segm_printing import *
-from trace_analysis.idea_distillation import DistilledIdeaClusters, distill_atom_clusters, DistilledIdea, build_idea_distillation
+from eallmancy.analysis.trace_analysis.greedy_salidea import *
+from eallmancy.analysis.trace_analysis.atomization import *
+from eallmancy.analysis.trace_analysis.segm_printing import *
+from eallmancy.analysis.trace_analysis.idea_distillation import DistilledIdeaClusters, distill_atom_clusters, DistilledIdea, build_idea_distillation
 
 
 
@@ -259,6 +258,11 @@ class ClusteredSegmentsMap:
         self._segset_map.get(frozenset(segset))
 
 
+CHATGPT_4O_MINI = {
+
+}
+
+
 class IdeaExtractorCache:
     def __init__(self, ps, **kwargs):
 
@@ -280,6 +284,16 @@ class IdeaExtractorCache:
         self.min_match_tokens = kwargs.get('min_match_tokens', 6)
         self.min_match_members = kwargs.get('min_match_members', 3)
         self.min_match_embeddingsim = kwargs.get('min_match_embeddingsim', 0.90)
+
+        
+        # giga-brain dependency hacking
+        from eallmancy.engine.llm_solution_engine_v3 import EngineV3
+        
+        self._internal_engine = EngineV3(
+            api_spec=kwargs.get("idea_extractor_llm", CHATGPT_4O_MINI),
+            problem_spec=ps,
+            tracing=False
+        )
 
 
     def _update_jplag(self, new_soln, ttrace, solution_id_filter=None):
@@ -446,7 +460,7 @@ class IdeaExtractorCache:
 
         return self._clustered_segments.merge_extend( new_segments, applied_soln_filter=applied_soln_filter )
     
-    def _update_idea_distillations(self, new_idea_segments: List[MatchAtom], ttrace, engine: EngineV3):
+    def _update_idea_distillations(self, new_idea_segments: List[MatchAtom], ttrace):
         new_refl = dict()
         active_ids = list(self._clustered_segments._active_map.keys())
         for k in active_ids:
@@ -454,12 +468,12 @@ class IdeaExtractorCache:
                 new_refl[k] = self._idea_reflections[k]
             else:
                 new_atm = self._clustered_segments._active_map[k]
-                new_refl[new_atm.cache['id']] = build_idea_distillation(new_atm, ttrace, engine, self._tcmp)
+                new_refl[new_atm.cache['id']] = build_idea_distillation(new_atm, ttrace, self._internal_engine, self._tcmp)
         self._idea_reflections = new_refl
 
-    def hook(self, ttrace, engine: EngineV3, solution_id_filter=None):
+    def hook(self, arte, ttrace, solution_id_filter=None):
         # we should have exactly one new solution
-        new_soln = ttrace.list[-1]
+        new_soln = arte
         new_soln_id = new_soln.trace_id
 
         if not new_soln.is_solution:
@@ -469,7 +483,7 @@ class IdeaExtractorCache:
         new_comparisons = self._update_jplag(new_soln, ttrace, solution_id_filter=solution_id_filter)
         affected_soln_ids = self._update_atoms(new_persp_id=new_soln_id, new_comparisons=new_comparisons)
         new_idea_segments = self._scrape_idea_segments(persp_id=new_soln_id, ttrace=ttrace, engine=engine, affected_soln_ids=affected_soln_ids, applied_soln_filter=solution_id_filter)
-        self._update_idea_distillations(new_idea_segments, ttrace=ttrace, engine=engine)
+        self._update_idea_distillations(new_idea_segments, ttrace=ttrace)
 
         return
 
