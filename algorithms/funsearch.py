@@ -134,7 +134,7 @@ class FunIsland:
         )
 
 
-def funsearch(n_isles=10, max_samples=2*60, samples_per_generation=10, api_spec=None, problem_spec=None):
+def funsearch(n_isles=5, max_samples=2*60, samples_per_generation=10, api_spec=None, problem_spec=None):
 
     with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
         engine.start()

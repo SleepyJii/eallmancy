@@ -2,8 +2,8 @@
 import numpy as np
 from typing import Optional, List
 from dataclasses import dataclass
-from trace_analysis.atomization.match_atom import MatchAtom
-from trace_analysis.atomization.solution_segment import SolutionSegment
+from eallmancy.analysis.trace_analysis.atomization.match_atom import MatchAtom
+from eallmancy.analysis.trace_analysis.atomization.solution_segment import SolutionSegment
 
 
 

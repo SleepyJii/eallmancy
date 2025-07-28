@@ -1,9 +1,8 @@
 import requests
-from experiments.scievo.operations.utils import ancestor_mapdists, latest_common_ancestor, heritage_distance, heritage_distances
+from eallmancy.analysis.utils import ancestor_mapdists, latest_common_ancestor, heritage_distance, heritage_distances
 import jplag
 from jplag import calc_jplag_distances
 import numpy as np
-from eallmancy.engine.engine_trace import EngineTrace
 
 
 from dataclasses import dataclass
@@ -64,7 +63,7 @@ def cosine_sim(a, b):
 # print(cosine_sim(*res))
 
 
-def _scrape_ideas(ttrace: EngineTrace, jplag_dist, embed_dist, herit_dist):
+def _scrape_ideas(ttrace, jplag_dist, embed_dist, herit_dist):
     # TODO: implement
     return []
 
@@ -120,7 +119,7 @@ def build_analysis(ttrace):
 
 
 
-def find_centered_clusters(ttrace: EngineTrace, res: EngineTraceAnalysis, k=2, allowed_eps=0.3, min_members=3):
+def find_centered_clusters(ttrace, res: EngineTraceAnalysis, k=2, allowed_eps=0.3, min_members=3):
     masked_jplag_matrix = res.jplag_distances.copy()
     
     # nan out everyone but close relatives

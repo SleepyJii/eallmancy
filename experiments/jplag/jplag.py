@@ -1,6 +1,5 @@
 import sys
 sys.path.insert(0,'/root/eallmancy')
-from eallmancy.engine.engine_trace import EngineTrace
 
 from pathlib import Path
 import shutil

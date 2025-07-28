@@ -9,6 +9,7 @@ from llm4ad.base.sample import SampleTrimmer
 
 import networkx as nx
 import itertools
+import inspect
 
 from llm4ad.base.code import Program
 from eallmancy.artifacts.artifact import Artifact
@@ -81,7 +82,7 @@ class EngineSetupContext:
 
 
 class EngineV3:
-    def __init__(self, api_spec=None, problem_spec: ProblemSpec=None, debug=False):
+    def __init__(self, api_spec=None, problem_spec: ProblemSpec=None, tracing=True, debug=False, **kwargs):
         if api_spec is not None:
             if api_spec.get('openai_format', False):
                 self._sampler = SampleTrimmer(OpenAIAPI(**_filter_openai_kwargs(api_spec)))
@@ -96,8 +97,10 @@ class EngineV3:
         self._worker_pool = None
 
         self.trace: Optional[EngineTrace] = None
+        self._tracing = tracing
         self.is_running = False
         self.hooks = []
+        self.kwargs = kwargs
 
     def add_hook(self, hook_func):
         self.hooks.append(hook_func)
@@ -129,7 +132,8 @@ class EngineV3:
                 n_workers=1
             ).setup()
 
-        self.start_trace()
+        if self._tracing:
+            self.start_trace()
         self.is_running = True
     
     def finish(self):
@@ -139,7 +143,7 @@ class EngineV3:
 
     def start_trace(self):
         if self.trace is None:
-            self.trace = EngineTrace()
+            self.trace = EngineTrace(problem_spec=self._problem_spec, **self.kwargs)
         return self
     
     def dump_trace(self):
@@ -155,7 +159,7 @@ class EngineV3:
             self.trace._register_trace(parents, arte, **tags)
             if not disable_hooks:
                 for hook in self.hooks:
-                    hook(self.trace)
+                    hook(arte, self.trace)
         
     async def async_register_artifact(self, arte: Artifact, parents: List[Artifact] = [], disable_hooks=False, **tags):
         if not self.is_running:
@@ -165,8 +169,11 @@ class EngineV3:
             self.trace._register_trace(parents, arte, **tags)
             if not disable_hooks:
                 for hook in self.hooks:
-                    # because we are in async mode, assuming async hooks
-                    await hook(self.trace)
+                    if inspect.iscoroutinefunction(hook):
+                        # because we are in async mode, assuming async hooks
+                        await hook(arte, self.trace)
+                    else:
+                        hooK(arte, self.trace)
 
 
     def build_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):

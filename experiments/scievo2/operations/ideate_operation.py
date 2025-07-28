@@ -11,7 +11,7 @@ from experiments.scievo2.base import ThoughtfulSolution
 from experiments.scievo2.population import Population
 from experiments.scievo2.operations.operation import Operation, OperationNotApplicable
 from experiments.scievo2.operations.utils import _children, _parents, _fitnessrank_probs
-from experiments.trace_analysis.idea_distillation import DistilledIdea
+from eallmancy.analysis.trace_analysis.idea_distillation import DistilledIdea
 
 
 

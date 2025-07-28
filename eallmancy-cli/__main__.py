@@ -51,9 +51,8 @@ class LiveTargetUpdater:
             self._content = f.read()
         self.overwrite = overwrite
 
-    def hook(self, latest_trace):
+    def hook(self, new_arte, latest_trace):
         self.latest_trace = latest_trace
-        new_arte = latest_trace.list[-1]
         if issubclass(type(new_arte), MultiPartSolution):
             print(new_arte)
             if new_arte.fitness < self.best_score:

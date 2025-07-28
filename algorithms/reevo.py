@@ -140,14 +140,14 @@ Output code only and enclose your code with Python code block: ```python ... ```
 import random
 
 
-def reevo(pop_size=8, max_samples=30, max_generations=int(1e9), problem_spec=None, api_spec=None, **kwargs):
+def reevo(initial_size=5, pop_size=8, max_samples=30, max_generations=int(1e9), problem_spec=None, api_spec=None, **kwargs):
 
     n_solns = 0
 
     with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
         engine.start() 
         # initial pop generation
-        population = [initial_solution() for _ in range(pop_size)]
+        population = [initial_solution() for _ in range(initial_size)]
         n_solns += pop_size
         longterm_refl = None
 

@@ -2,10 +2,10 @@
 import numpy as np
 from typing import Optional, List, Dict
 from dataclasses import dataclass, field
-from trace_analysis.atomization.embeddings import get_openai_embeddings
-from trace_analysis.atomization.solution_segment import SolutionSegment
-from trace_analysis.utils import cosine_sim
-from trace_analysis.segm_printing import *
+from eallmancy.analysis.trace_analysis.atomization.embeddings import get_openai_embeddings
+from eallmancy.analysis.trace_analysis.atomization.solution_segment import SolutionSegment
+from eallmancy.analysis.trace_analysis.utils import cosine_sim
+from eallmancy.analysis.trace_analysis.segm_printing import *
 
 
 

@@ -34,7 +34,7 @@ class LiveTargetUpdater:
     async def inform_new_trace(self):
         await self._shared['serv_msg_q'].put(dict(msg_type='GET_TIMESTAMPS')) 
 
-    def hook(self, latest_trace):
+    def hook(self, new_arte, latest_trace):
         with self._tracelock:
             self._last_timestamp.value = datetime.utcnow().timestamp()
             self._shared["_latest_trace"] = latest_trace.graph
