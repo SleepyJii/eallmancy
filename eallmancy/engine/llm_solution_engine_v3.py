@@ -79,6 +79,19 @@ class EngineSetupContext:
             return self._trace
         return self._engine.trace
 
+class APIKwargsContext:
+    def __init__(self, llm, **new_kwargs):
+        self.old_kwargs = {k:v for k,v in llm.kwargs.items()}
+        self.modified_llm = llm
+        self.kwargs = new_kwargs
+    
+    def __enter__(self):
+        self.modified_llm.kwargs.update(self.kwargs)
+    
+    def __exit__(self, type, value, traceback):
+        self.modified_llm.kwargs = self.old_kwargs
+        self.modified_llm = None
+        self.old_kwargs = None
 
 
 class EngineV3:
@@ -176,12 +189,12 @@ class EngineV3:
                         hooK(arte, self.trace)
 
 
-    def build_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
+    def build_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True, **kwargs):
         if not self.is_running:
             raise Exception("cannot generate artifact when the engine has not been started!")
         
-        resp_txt_raw = self._sampler._llm.draw_sample(prompt) # TODO: add backoffs
-
+        with APIKwargsContext(self._sampler._llm, **kwargs):
+            resp_txt_raw = self._sampler._llm.draw_sample(prompt) # TODO: add backoffs
 
         artifact: Artifact = (
             arte_class(
@@ -199,22 +212,22 @@ class EngineV3:
         return artifact, parents
 
 
-    def generate_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
-        artifact, parents = self.build_artifact(prompt, arte_class, parents)
+    def generate_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True, **kwargs):
+        artifact, parents = self.build_artifact(prompt, arte_class, parents, **kwargs)
 
         if register:
-            self.register_artifact(artifact, parents)
+            self.register_artifact(artifact, parents, **kwargs)
 
         return artifact
     
-    async def async_build_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
-        return await asyncio.to_thread(self.build_artifact, prompt, arte_class, parents)
+    async def async_build_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True, **kwargs):
+        return await asyncio.to_thread(self.build_artifact, prompt, arte_class, parents, **kwargs)
 
-    async def async_generate_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True):
-        artifact, parents = await self.async_build_artifact( prompt, arte_class, parents)
+    async def async_generate_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True, **kwargs):
+        artifact, parents = await self.async_build_artifact( prompt, arte_class, parents, **kwargs)
 
         if register:
-            await self.async_register_artifact(artifact, parents)
+            await self.async_register_artifact(artifact, parents, **kwargs)
 
         return artifact
     

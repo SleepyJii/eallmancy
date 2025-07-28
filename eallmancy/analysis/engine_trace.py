@@ -64,6 +64,9 @@ class EngineTrace:
             for inp_art in input_arts:
                 if inp_art is not None:
                     self.trace_graph.add_edge(inp_art.trace_id, output_art.trace_id)
+            
+        if self.trace_analysis is not None:
+            self.trace_analysis.hook(self)
      
     def register_artifact(self, arte: Artifact, parents: List[Artifact] = []):
         if arte.trace_id is not None:

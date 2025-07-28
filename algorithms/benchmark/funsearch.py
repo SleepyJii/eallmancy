@@ -89,7 +89,7 @@ def _softmax(logits: np.ndarray, temperature: float) -> np.ndarray:
 
 
 class FunIsland:
-    def __init__(self, funcs_per_prompt=4, selection_temp_init=0.1, selection_temp_period=30000):
+    def __init__(self, funcs_per_prompt=2, selection_temp_init=0.1, selection_temp_period=30000):
         self.funcs_per_prompt = funcs_per_prompt
         self._clusters: Dict[tuple[float, ...], List[SinglePartSolution]] = defaultdict(lambda : [])
         self.selection_temp_init = selection_temp_init
@@ -134,7 +134,7 @@ class FunIsland:
         )
 
 
-def funsearch(n_isles=5, max_samples=2*60, samples_per_generation=10, api_spec=None, problem_spec=None):
+def funsearch(n_isles=10, max_samples=2*60, samples_per_generation=30, api_spec=None, problem_spec=None):
 
     with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
         engine.start()

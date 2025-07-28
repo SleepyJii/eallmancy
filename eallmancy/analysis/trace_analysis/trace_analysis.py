@@ -27,14 +27,13 @@ class TraceAnalysis:
         self.last_seen_graph = nx.DiGraph()
 
         # localized fitness memoization
-        # self.local_fitness_stats = defaultdict(lambda : {'refine_fitness_sum': 0, 'refine_fitness_cnt': 0})
+        self.local_fitness_stats = defaultdict(lambda : {'refine_fitness_sum': 0, 'refine_fitness_cnt': 0})
 
         # heritage distance memoization
         self.ancestor_mapdists = dict()
         self.heritage_distances = dict()
 
         # idea extractor internal cache
-        self._engine = engine
         self.idea_extractor_cache = IdeaExtractorCache(**kwargs)
         self.idea_extraction_radius = kwargs.get('max_match_heritagedist', 3)
 
@@ -103,7 +102,7 @@ class TraceAnalysis:
                     self.heritage_distances[(n,m)] = heritage_distance(soln_only_G, self.ancestor_mapdists, n, m)
     
 
-    def update_idea_extraction(self, ttrace, engine):
+    def update_idea_extraction(self, ttrace):
         # lookup heritage distance to latest artifact
 
         art = ttrace.list[-1] ## TODO: better way to handle this
@@ -119,16 +118,16 @@ class TraceAnalysis:
             ] + [art.trace_id]
         ))
 
-        self.idea_extractor_cache.hook(ttrace, engine, solution_id_filter=local_neighborhood)
+        self.idea_extractor_cache.hook(art, ttrace, solution_id_filter=local_neighborhood)
 
-    async def hook(self, ttrace):
+    def hook(self, ttrace):
         ## THIS IS WHAT WE WILL GET EVERY TIME A TRACE UPDATES
         
         self.update_localized_fitnesses(ttrace)
 
         self.update_heritage_distances(ttrace)
 
-        self.update_idea_extraction(ttrace, self._engine)
+        self.update_idea_extraction(ttrace)
 
         self.last_seen_solutions = [a for a in ttrace.list if a.is_solution]
 
