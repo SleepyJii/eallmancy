@@ -5,13 +5,14 @@
 
 
 import os
+import numpy as np
 
 from eallmancy.engine.llm_solution_engine_v3 import EngineV3
 
 from eallmancy import Artifact, SinglePartSolution, ProblemSpec
 from typing import List, Optional
-import os
 import re
+
 
 
 OPENAI_API_SPEC = dict(
@@ -148,7 +149,7 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
 import random
 
 
-def reevo(initial_size=5, pop_size=8, max_samples=30, max_generations=int(1e9), problem_spec=None, api_spec=None, **kwargs):
+def reevo(initial_size=30, pop_size=10, max_samples=30, max_generations=int(1e9), crossover_rate=1.0, mutation_rate=0.5, problem_spec=None, api_spec=None, **kwargs):
 
     n_solns = 0
 
@@ -174,26 +175,27 @@ def reevo(initial_size=5, pop_size=8, max_samples=30, max_generations=int(1e9), 
             # crossover, using ST reflections and current solns
             crossover_solns = []
             for refl_idx, comparison_refl in enumerate(comparative_refls):
-                crossover_solns.append(
-                    crossover_solution(population[refl_idx*2], population[refl_idx*2+1], comparison_refl)
-                )
-                n_solns += 1
-                # print('CROSSOVER\n', crossover_solns[-1])
+                if np.random.rand() <= crossover_rate:
+                    crossover_solns.append(
+                        crossover_solution(population[refl_idx*2], population[refl_idx*2+1], comparison_refl)
+                    )
+                    n_solns += 1
+            
+            population.extend(crossover_solns)
             
             # long term reflection, distill past and current comparisons
             longterm_refl = longterm_reflection(longterm_refl, comparative_refls)
             # print('LTREFL\n', longterm_refl)
 
-            # elitist mutation, using new heuristics and LT reflections
-            elite_soln = min(population+crossover_solns, key=lambda ss: ss.fitness * (-1+2*engine._problem_spec.maximization))
-            elite_mutated_solns = [
-                elite_mutated_solution(longterm_refl, elite_soln)
-                for _ in range(pop_size - len(crossover_solns))
-            ]
-            n_solns += len(elite_mutated_solns)
+            if np.random.rand() <= mutation_rate:
+                # elitist mutation, using new heuristics and LT reflections
+                elite_soln = min(population+crossover_solns, key=lambda ss: ss.fitness * (-1+2*engine._problem_spec.maximization))
+                elite_mutated_soln = elite_mutated_solution(longterm_refl, elite_soln)
+                population.append(elite_mutated_soln)
+                n_solns += 1
             # print('ELITEMUT\n',elite_mutated_solns[0])
             
-            population = population + crossover_solns + elite_mutated_solns
+            # apply pip_size survival filter
             population = list(sorted(population, key=lambda sln: sln.fitness, reverse=engine._problem_spec.maximization))[:pop_size]
 
             if max_samples < len([art for art in ec.trace.list if art.is_solution]):

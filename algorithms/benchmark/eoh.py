@@ -194,7 +194,7 @@ def _eoh_worker(population: Population, e1_per_gen=1 ,e2_per_gen=1, m1_per_gen=1
 #         return min(population.members, key=lambda f: f.fitness)
 
 
-def eoh(initial_size=5, pop_size=5, max_samples=10, max_generations=1e9, problem_spec: ProblemSpec=None, api_spec=OPENAI_API_SPEC, n_workers=1, **kwargs):
+def eoh(initial_size=5, pop_size=10, max_samples=10, max_generations=1e9, problem_spec: ProblemSpec=None, api_spec=OPENAI_API_SPEC, n_workers=1, **kwargs):
 
     with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
         engine.start()

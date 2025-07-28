@@ -450,9 +450,9 @@ class IdeaExtractorCache:
         return seg_atoms
 
 
-    def _scrape_idea_segments(self, persp_id, ttrace, engine, affected_soln_ids=None, applied_soln_filter=None):
+    def _scrape_idea_segments(self, persp_id, ttrace, affected_soln_ids=None, applied_soln_filter=None):
         new_segments = self.persp_idea_segment_extraction(
-                persp_id, ttrace, engine,
+                persp_id, ttrace, self._internal_engine,
                 exclude_template=True, min_token_len=self.min_match_tokens, min_members=self.min_match_members, ce_cutoff=self.min_match_embeddingsim,
                 soln_filter=list(affected_soln_ids),
                 cached_embeddings=None
@@ -482,7 +482,10 @@ class IdeaExtractorCache:
 
         new_comparisons = self._update_jplag(new_soln, ttrace, solution_id_filter=solution_id_filter)
         affected_soln_ids = self._update_atoms(new_persp_id=new_soln_id, new_comparisons=new_comparisons)
-        new_idea_segments = self._scrape_idea_segments(persp_id=new_soln_id, ttrace=ttrace, engine=engine, affected_soln_ids=affected_soln_ids, applied_soln_filter=solution_id_filter)
+        new_idea_segments = self._scrape_idea_segments(
+            persp_id=new_soln_id, ttrace=ttrace,
+            affected_soln_ids=affected_soln_ids, applied_soln_filter=solution_id_filter
+        )
         self._update_idea_distillations(new_idea_segments, ttrace=ttrace)
 
         return
