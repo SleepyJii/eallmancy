@@ -40,18 +40,16 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
 
 
 
-def _smooth_activation(x, eps=1e-3, target0=0.1):
+def _smooth_activation_v0(x, eps=1e-3, target0=0.1):
     L = 1.5  # saturation level
     k = np.log(L / eps - 1) / 6  # slope parameter
     # Compute shift to achieve f(0) ~ target0
     shift = np.log(L / target0 - 1) / k
     return L / (1 + np.exp(-k * (x - shift)))
 
-# def _smooth_activation(x, A=0.5, k=4.08, x0=3, s=3):
-#     return 1 - A / (1 + np.exp(-k * (x - x0) / s))
 
 # @engine.prompt_to_solution
-def generate_islespawn(trace, *isle_examples):
+def generate_islespawn_thermalfecundity(trace, *isle_examples):
     base = f'''{engine._problem_spec.description}
 Previous implementations, from *worst to best*
 '''
@@ -67,7 +65,52 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
     # big brain time. calculate discounted temperature based hacky activation
     og_temp = engine._sampler._llm.kwargs.get('temperature', 1.)
     M = avg_parentage_saturation = sum([trace.graph.out_degree(ie.trace_id) for ie in isle_examples]) / len(isle_examples)
-    custom_temp = _smooth_activation(M)#*og_temp
+    custom_temp = _smooth_activation_v0(M)#*og_temp
+
+    # temperature KWARG should be passed via context manager into the LLM handling
+    return engine.generate_artifact(base, SinglePartSolution, parents=isle_examples, temperature=custom_temp)
+
+
+
+def activation_v1(x, ctmp, eps=1e-3, xstar=0.9):
+    if ctmp == 0:
+        return 1.
+    elif x >= xstar:
+        return 1.
+
+    tmax = 1.5
+    L = tmax / max(ctmp, eps)
+    
+    return L*(1 - x/xstar) + x/xstar
+
+
+def generate_islespawn_thermalfomo(trace, *isle_examples):
+    base = f'''{engine._problem_spec.description}
+Previous implementations, from *worst to best*
+'''
+    base += '\n'.join(list(map(str, sorted(isle_examples, key=lambda sln: sln.fitness-1*(-1+2*engine._problem_spec.maximization), reverse=True))))
+    base += f'''
+Please assist in writing a next version of the algorithm with the same function signature:
+```python
+{engine._problem_spec.template}
+```
+Enclose within a code block like ```python ... ```. Do not give additional explanations.
+'''
+
+    # big brain time. calculate discounted temperature based hacky activation
+    og_temp = engine._sampler._llm.kwargs.get('temperature', 1.)
+
+    parent_fitnesses = [ie.fitness for ie in isle_examples]
+    avg_parent_fitness = sum(parent_fitnesses) / len(isle_examples)
+    curr_tidx = max([a.trace_id for a in trace.list])
+    prev_solns = [a for a in trace.list[:]]
+    _m = 1 if engine._problem_spec.maximization else -1
+    M = avg_fit_pct = 1 - (len([a for a in trace.list if a.is_solution and a.fitness*_m > avg_parent_fitness*_m]) / len([a for a in trace.list if a.is_solution]))
+
+
+    act = activation_v1(M, og_temp)
+    custom_temp = act * og_temp
+    # print('par_pct', M,'\tact',act,'\ttemp',custom_temp)
 
     # temperature KWARG should be passed via context manager into the LLM handling
     return engine.generate_artifact(base, SinglePartSolution, parents=isle_examples, temperature=custom_temp)
@@ -155,7 +198,7 @@ class FunIsland:
         )
 
 
-def thermal_funsearch(n_isles=10, max_samples=2*60, samples_per_generation=30, api_spec=None, problem_spec=None):
+def thermal_funsearch_v0(n_isles=10, max_samples=2*60, samples_per_generation=30, api_spec=None, problem_spec=None):
 
     with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
         engine.start()
@@ -165,7 +208,7 @@ def thermal_funsearch(n_isles=10, max_samples=2*60, samples_per_generation=30, a
 
         for sidx in range(1,max_samples+1):
             isle_idx = np.random.randint(len(islands))
-            new_soln = generate_islespawn(engine.trace, *islands[isle_idx].select_parents())
+            new_soln = generate_islespawn_thermalfecundity(engine.trace, *islands[isle_idx].select_parents())
             islands[isle_idx].register(new_soln)
 
             if (sidx % samples_per_generation) == 0: # reset worst half of the islands
@@ -183,6 +226,42 @@ def thermal_funsearch(n_isles=10, max_samples=2*60, samples_per_generation=30, a
                 islands = keep_islands + new_islands
 
         return ec.trace
+
+
+
+
+def thermal_funsearch_v1(n_isles=10, max_samples=2*60, samples_per_generation=30, api_spec=None, problem_spec=None):
+
+    with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
+        engine.start()
+
+
+        islands = [FunIsland().register(generate_initial()) for _ in range(n_isles)]
+
+        for sidx in range(1,max_samples+1):
+            isle_idx = np.random.randint(len(islands))
+            new_soln = generate_islespawn_thermalfomo(engine.trace, *islands[isle_idx].select_parents())
+            islands[isle_idx].register(new_soln)
+
+            if (sidx % samples_per_generation) == 0: # reset worst half of the islands
+                islands = list(sorted(
+                    islands,
+                    key=lambda i: i.best_soln().fitness + np.random.random()*1.e-6,
+                    reverse=engine._problem_spec.maximization
+                ))
+                keep_islands = islands[:len(islands) // 2]
+                founder_islands = np.random.choice(keep_islands, size=(len(islands) - len(keep_islands)))
+                new_islands = [
+                    FunIsland().register(origin_isle.best_soln())
+                    for origin_isle in founder_islands
+                ]
+                islands = keep_islands + new_islands
+
+        return ec.trace
+
+
+
+
 
 
 if __name__=="__main__":
