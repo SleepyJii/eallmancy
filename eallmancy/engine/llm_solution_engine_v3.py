@@ -8,6 +8,8 @@ from llm4ad.tools.llm.llm_api_openai import OpenAIAPI
 from llm4ad.base.sample import SampleTrimmer
 
 import networkx as nx
+import numpy as np
+import random
 import itertools
 import inspect
 
@@ -192,6 +194,10 @@ class EngineV3:
     def build_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True, **kwargs):
         if not self.is_running:
             raise Exception("cannot generate artifact when the engine has not been started!")
+
+        if self.kwargs.get('thermal_chaos', False):
+            # this should randomize temperature via APIKwargsContext
+            kwargs.update({'temperature': random.random()*1.75})
         
         with APIKwargsContext(self._sampler._llm, **kwargs):
             resp_txt_raw = self._sampler._llm.draw_sample(prompt) # TODO: add backoffs
