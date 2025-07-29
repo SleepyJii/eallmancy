@@ -18,6 +18,7 @@ class BPPoffACOProblemSpec(ProblemSpec):
             template=BPPoffACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
             evaluator=reallm_evaluator_func(_signflips(BPPoffACOEvaluator(*args, **kwargs).evaluate)),
+            maximization=maximization,
         )
 
 class CVRPACOProblemSpec(ProblemSpec):
@@ -28,6 +29,7 @@ class CVRPACOProblemSpec(ProblemSpec):
             template=CVRPACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
             evaluator=reallm_evaluator_func(_signflips(CVRPACOEvaluator(*args, **kwargs).evaluate)),
+            maximization=maximization,
         )
 
 class MKPACOProblemSpec(ProblemSpec):
@@ -38,6 +40,7 @@ class MKPACOProblemSpec(ProblemSpec):
             template=MKPACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
             evaluator=reallm_evaluator_func(_signflips(MKPACOEvaluator(*args, **kwargs).evaluate)),
+            maximization=maximization,
         )
 
 class OPACOProblemSpec(ProblemSpec):
@@ -48,6 +51,7 @@ class OPACOProblemSpec(ProblemSpec):
             template=OPACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
             evaluator=reallm_evaluator_func(_signflips(OPACOEvaluator(*args, **kwargs).evaluate)),
+            maximization=maximization,
         )
 
 class TSPACOProblemSpec(ProblemSpec):
@@ -58,5 +62,6 @@ class TSPACOProblemSpec(ProblemSpec):
             template=TSPACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
             evaluator=reallm_evaluator_func(_signflips(TSPACOEvaluator(*args, **kwargs).evaluate)),
+            maximization=maximization,
         )
 

@@ -40,8 +40,15 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
 
 
 
-def _smooth_activation(x, A=0.5, k=4.08, x0=3, s=3):
-    return 1 - A / (1 + np.exp(-k * (x - x0) / s))
+def _smooth_activation(x, eps=1e-3, target0=0.1):
+    L = 1.5  # saturation level
+    k = np.log(L / eps - 1) / 6  # slope parameter
+    # Compute shift to achieve f(0) ~ target0
+    shift = np.log(L / target0 - 1) / k
+    return L / (1 + np.exp(-k * (x - shift)))
+
+# def _smooth_activation(x, A=0.5, k=4.08, x0=3, s=3):
+#     return 1 - A / (1 + np.exp(-k * (x - x0) / s))
 
 # @engine.prompt_to_solution
 def generate_islespawn(trace, *isle_examples):
@@ -60,9 +67,10 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
     # big brain time. calculate discounted temperature based hacky activation
     og_temp = engine._sampler._llm.kwargs.get('temperature', 1.)
     M = avg_parentage_saturation = sum([trace.graph.out_degree(ie.trace_id) for ie in isle_examples]) / len(isle_examples)
+    custom_temp = _smooth_activation(M)#*og_temp
 
     # temperature KWARG should be passed via context manager into the LLM handling
-    return engine.generate_artifact(base, SinglePartSolution, parents=isle_examples, temperature=_smooth_activation(M)*og_temp)
+    return engine.generate_artifact(base, SinglePartSolution, parents=isle_examples, temperature=custom_temp)
 
 
 
