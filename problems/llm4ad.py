@@ -26,6 +26,7 @@ class OBPProblemSpec(ProblemSpec):
             template=tt.template_program,
             entrypoint="priority",
             evaluator=reallm_evaluator_func(_signflips(tt.evaluate), maximization=maximization),
+            maximization=maximization,
         )
 
 class TSPProblemSpec(ProblemSpec):
@@ -37,6 +38,7 @@ class TSPProblemSpec(ProblemSpec):
             template=tt.template_program,
             entrypoint="select_next_node",
             evaluator=reallm_evaluator_func(_signflips(tt.evaluate), maximization=maximization),
+            maximization=maximization,
         )
 
 class JSSPProblemSpec(ProblemSpec):
@@ -48,6 +50,7 @@ class JSSPProblemSpec(ProblemSpec):
             template=tt.template_program,
             entrypoint="determine_next_operation",
             evaluator=reallm_evaluator_func(_signflips(tt.evaluate), maximization=maximization),
+            maximization=maximization,
         )
 
 class CVRPProblemSpec(ProblemSpec):
@@ -59,6 +62,7 @@ class CVRPProblemSpec(ProblemSpec):
             template=tt.template_program,
             entrypoint="select_next_node",
             evaluator=reallm_evaluator_func(_signflips(tt.evaluate), maximization=maximization),
+            maximization=maximization,
         )
 
 class KnapsackProblemSpec(ProblemSpec):
@@ -70,6 +74,7 @@ class KnapsackProblemSpec(ProblemSpec):
             template=tt.template_program,
             entrypoint="select_next_item",
             evaluator=reallm_evaluator_func(_signflips(tt.evaluate), maximization=maximization),
+            maximization=maximization,
         )
 
 
