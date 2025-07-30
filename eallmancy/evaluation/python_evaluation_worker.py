@@ -60,11 +60,11 @@ class PythonEvaluationWorker(EvaluateSolutionWorker):
         resp_pythoncode = (['pass']+[resp_txt_raw])[-1]
         resp_codepreface = re.findall(r'^(.*)\ndef ', resp_pythoncode, flags=re.DOTALL)
         resp_codepreface = (['']+resp_codepreface)[-1]
-        resp_txt_trim = SampleTrimmer.auto_trim(resp_pythoncode)
-        prog = SampleTrimmer.sample_to_program(resp_txt_trim, self.problem_spec.template)
-
-        eval_func = timeout(self.problem_spec.eval_timeout, timeout_exception=Exception)(self._evaluate_program)
         try:
+            resp_txt_trim = SampleTrimmer.auto_trim(resp_pythoncode)
+            prog = SampleTrimmer.sample_to_program(resp_txt_trim, self.problem_spec.template)
+
+            eval_func = timeout(self.problem_spec.eval_timeout, timeout_exception=Exception)(self._evaluate_program)
             res = eval_func(prog, resp_codepreface)
             
             return Evaluation(
