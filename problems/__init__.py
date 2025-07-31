@@ -1,5 +1,5 @@
 
-from problems.llm4ad import (
+from .llm4ad import (
     OBPProblemSpec,
     TSPProblemSpec,
     JSSPProblemSpec,
@@ -13,7 +13,7 @@ from problems.llm4ad import (
     VRPTWProblemSpec,
 )
 
-from problems.reevo import (
+from .reevo import (
     BPPoffACOProblemSpec,
     CVRPACOProblemSpec,
     MKPACOProblemSpec,
