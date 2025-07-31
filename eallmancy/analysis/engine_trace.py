@@ -29,9 +29,9 @@ class StaticProblemSpec:
 
 
 class EngineTrace:
-    def __init__(self, problem_spec, trace_analysis=False, **kwargs):
+    def __init__(self, problem_spec=None, trace_analysis=False, **kwargs):
         self._id_generator = itertools.count()
-        self.problem_spec = StaticProblemSpec.from_problem_spec(problem_spec)
+        self.problem_spec = problem_spec if problem_spec is None else StaticProblemSpec.from_problem_spec(problem_spec)
         self.trace_graph = nx.DiGraph()
         self.trace_list = []
         self.lock = Lock()
