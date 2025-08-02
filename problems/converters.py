@@ -50,7 +50,8 @@ def _lazy_add_np_import(templ_str):
     return templ_str
 
 def reallm_to_llm4ad(ps: ProblemSpec) -> LLM4ADEvaluation:
-    _eval = _unwrap_reallm_evaluator(ps.evaluator)
+    # _eval = _unwrap_reallm_evaluator(ps.evaluator)
+    _eval = ps.evaluator
     class _Evaluation(LLM4ADEvaluation):
         def __init__(self):
             super().__init__(
@@ -65,16 +66,38 @@ def reallm_to_llm4ad(ps: ProblemSpec) -> LLM4ADEvaluation:
             return _swap_max_min(_eval)(eva)
     return _Evaluation()
 
+def eallmancy_to_llm4ad(ps: ProblemSpec) -> LLM4ADEvaluation:
+    # _eval = _unwrap_reallm_evaluator(ps.evaluator)
+    _eval = ps.evaluator
+    class _Evaluation(LLM4ADEvaluation):
+        def __init__(self):
+            super().__init__(
+                template_program=_lazy_add_np_import(ps.template),
+                task_description=ps.description,
+                use_numba_accelerate=False,
+                timeout_seconds=300,
+            )
+        def evaluate_program(self, program_str: str, callable_func: Callable) -> Any | None:
+            return self.evaluate(callable_func)
+        def evaluate(self, eva: Callable) -> float:
+            if ps.maximization:
+                return _eval(eva)
+            else:
+                return _swap_max_min(_eval)(eva)
+    _Evaluation.__name__ = f'{ps.__class__.__name__}Evaluator'
+    return _Evaluation()
 #def reevo_to_reallm(ev: ReevoEvaluation, prompts: Dict) -> ProblemSpec:
 #    return ProblemSpec(
 #  
 #)
 
 def reallm_to_reevo(ps: ProblemSpec) -> (ReevoEvaluation, Dict):
-    _eval = ps.evaluate
+    # _eval = _unwrap_reallm_evaluator(ps.evaluator)
+    _eval = ps.evaluator
     class _Evaluation(ReevoEvaluation):
         def evaluate(self, heuristic):
             return _eval(heuristic)
+    _Evaluation.__name__ = f'{ps.__class__.__name__}Evaluator'
     return (
         _Evaluation(),
         dict( # TODO: finish impl

@@ -10,6 +10,7 @@ import numpy as np
 from eallmancy.engine.llm_solution_engine_v3 import EngineV3
 
 from eallmancy import Artifact, SinglePartSolution, ProblemSpec
+from problems.reevo import InformedProblemSpec
 from typing import List, Optional
 import re
 
@@ -40,7 +41,7 @@ class EliteSolution(SinglePartSolution):
 class Reflection(Artifact):
     def __init__(self, response: str, *args, **kwargs):
         super().__init__(response, *args, **kwargs)
-        self.thought = (re.findall(r'<<(.*)>>', response) or [None])[-1]
+        self.thought = response
     
     def __str__(self):
         return f"{self.thought}"
@@ -56,87 +57,137 @@ class LongTermReflection(Reflection):
 # distilled_reflection = engine.prompt_to_reflection.add_output(observation=r'<<(.*)>>')
 
 # @engine.prompt_to_solution
-def initial_solution() -> SinglePartSolution:
+def initial_solution(engine) -> SinglePartSolution:
+    if not issubclass(type(engine._problem_spec), InformedProblemSpec):
+        raise Exception("benchmark ReEvo algorithm requires `InformedProblemSpec`")
+
     pmpt = f"""
-{engine._problem_spec.description}
-Implement the following Python function:
-```python
+You are an expert in the domain of optimization heuristics. Your task is to design heuristics that can effectively solve optimization problems.
+Your response outputs Python code and nothing else. Format your code as a Python code string: "```python ... ```".
+
+Write a {engine._problem_spec.entrypoint} function for {engine._problem_spec.description}
+{engine._problem_spec.func_description}
+
 {engine._problem_spec.template}
-```
-Enclose within a code block like ```python ... ```. Do not give additional explanations.
+
+Refer to the format of a trivial design above. Be very creative and give `{engine._problem_spec.entrypoint}`. Output code only and enclose your code with Python code block: ```python ... ```.
+
+{engine._problem_spec.external_knowledge}
 """
     return engine.generate_artifact(pmpt, SinglePartSolution)
 
 # @solutionpair_to_reflection
-def comparative_reflection(parenta: SinglePartSolution, parentb: SinglePartSolution) -> Reflection:
+def comparative_reflection(engine, parenta: SinglePartSolution, parentb: SinglePartSolution) -> Reflection:
+
+    if not issubclass(type(engine._problem_spec), InformedProblemSpec):
+        raise Exception("benchmark ReEvo algorithm requires `InformedProblemSpec`")
+
     scorea, scoreb = parenta.fitness, parentb.fitness
     if (scorea > scoreb) ^ (not engine._problem_spec.maximization):
         better_parent, worse_parent = parenta, parentb
     else:
         better_parent, worse_parent = parentb, parenta
-    pmpt = f"""
-{engine._problem_spec.description}
-You are provided with two versions of `{engine._problem_spec.entrypoint}` below, where the second version performs better than the first one.\n
-[Worse code]\n{worse_parent}\n
-[Better code]\n{better_parent}\n
 
-Respond with hints for designing better heuristics, based on the two code versions and using less than 20 words.
-Your suggestions should *only* pertain to core methodology, do not propose arbitrary data vaildations or quality of life improvements.
-*Make sure to bracket your response in <<>>.
+    pmpt = f"""
+You are an expert in the domain of optimization heuristics. Your task is to design heuristics that can effectively solve optimization problems.
+
+Below are two `{engine._problem_spec.entrypoint}` functions for {engine._problem_spec.description}
+{engine._problem_spec.func_description}
+
+You are provided with two code versions below, where the second version performs better than the first one.
+
+[Worse code]
+{worse_parent.program}
+
+[Better code]
+{better_parent.program}
+
+You respond with some hints for designing better heuristics, based on the two code versions and using less than 20 words.
 """
+
     return engine.generate_artifact(pmpt, ComparativeReflection, parents=[parenta, parentb])
 
 # @engine.prompt_to_solution
-def crossover_solution(parenta: SinglePartSolution, parentb: SinglePartSolution, comp_refl: ComparativeReflection) -> SinglePartSolution:
+def crossover_solution(engine, parenta: SinglePartSolution, parentb: SinglePartSolution, comp_refl: ComparativeReflection) -> SinglePartSolution:
+
+    if not issubclass(type(engine._problem_spec), InformedProblemSpec):
+        raise Exception("benchmark ReEvo algorithm requires `InformedProblemSpec`")
+        
     scorea, scoreb = parenta.fitness, parentb.fitness
     if (scorea > scoreb) ^ (not engine._problem_spec.maximization):
         better_parent, worse_parent = parenta, parentb
     else:
         better_parent, worse_parent = parentb, parenta
-    pmpt = f"""
-{engine._problem_spec.description}
-You are provided with two versions of `{engine._problem_spec.entrypoint}` below.\n
-[Worse code]\n{worse_parent}\n
-[Better code]\n{better_parent}\n
-[Reflection]\n{comp_refl}\n
 
-Implement an improved function `{engine._problem_spec.entrypoint}`, taking into account insights from the reflection.
-Make sure your code has the same function signature as the template below:
-```python
-{engine._problem_spec.template}
-```
-Enclose within a code block like ```python ... ```. Do not give additional explanations.
+    pmpt = f"""
+You are an expert in the domain of optimization heuristics. Your task is to design heuristics that can effectively solve optimization problems.
+Your response outputs Python code and nothing else. Format your code as a Python code string: "```python ... ```".
+
+Write a {engine._problem_spec.entrypoint} function for {engine._problem_spec.description}
+{engine._problem_spec.func_description}
+
+[Worse code]
+{worse_parent.program}
+
+[Better code]
+{better_parent.program}
+
+[Reflection]
+{comp_refl.thought}
+
+[Improved code]
+Please write an improved function `{engine._problem_spec.entrypoint}`, according to the reflection. Output code only and enclose your code with Python code block: ```python ... ```.
+
 """
+
     return engine.generate_artifact(pmpt, CrossoverSolution, parents=[parenta, parentb, comp_refl])
 
 # @distilled_reflection
-def longterm_reflection(prev_longterm_refl: LongTermReflection, st_refls: List[ComparativeReflection]) -> LongTermReflection:
+def longterm_reflection(engine, prev_longterm_refl: LongTermReflection, st_refls: List[ComparativeReflection]) -> LongTermReflection:
+
+    if not issubclass(type(engine._problem_spec), InformedProblemSpec):
+        raise Exception("benchmark ReEvo algorithm requires `InformedProblemSpec`")
+        
     st_refls_clean = '\n'.join(map(str,st_refls))
     pmpt = f"""
-{engine._problem_spec.description}
-Below is your prior long-term reflection on designing heuristics:\n```\n{prev_longterm_refl}\n```\n
-Below are some newly gained insights.\n```\n{st_refls_clean}\n```\n
+You are an expert in the domain of optimization heuristics. Your task is to design heuristics that can effectively solve optimization problems.
+
+Below is your prior long-term reflection on designing heuristics for {engine._problem_spec.description}
+{prev_longterm_refl}
+
+Below are some newly gained insights.
+{st_refls_clean}
+
 Write constructive hints for designing better heuristics, based on prior reflections and new insights and using less than 50 words.
-*Make sure to bracket your response in <<>>.
 """
+
     return engine.generate_artifact(pmpt, LongTermReflection, parents=[prev_longterm_refl, *st_refls])
 
 # @engine.prompt_to_solution
-def elite_mutated_solution(longterm_refl: LongTermReflection, elite_soln: SinglePartSolution):
-    pmpt = f"""
-{engine._problem_spec.description}
-Below is your prior long-term reflection on designing this heuristic:
-[Prior reflection]\n```\n{longterm_refl}\n```\n
-You are provided with a competitive version of `{engine._problem_spec.entrypoint}` below.\n
-[Code]{elite_soln}\n
+def elite_mutated_solution(engine, longterm_refl: LongTermReflection, elite_soln: SinglePartSolution):
 
-Please write a mutated function `{engine._problem_spec.entrypoint}`, taking into account insights from the reflection.
-Make sure your code implements the same function signature as the template below:
-```python
-{engine._problem_spec.template}
-```
-Enclose within a code block like ```python ... ```. Do not give additional explanations.
+    if not issubclass(type(engine._problem_spec), InformedProblemSpec):
+        raise Exception("benchmark ReEvo algorithm requires `InformedProblemSpec`")
+
+    pmpt = f"""
+You are an expert in the domain of optimization heuristics. Your task is to design heuristics that can effectively solve optimization problems.
+Your response outputs Python code and nothing else. Format your code as a Python code string: "```python ... ```".
+
+Write a {engine._problem_spec.entrypoint} function for {engine._problem_spec.description}
+{engine._problem_spec.func_description}
+
+[Prior reflection]
+{longterm_refl}
+{engine._problem_spec.external_knowledge}
+
+[Code]
+{elite_soln.program}
+
+[Improved code]
+Please write an mutated function `{engine._problem_spec.entrypoint}`, according to the reflection. Output code only and enclose your code with Python code block: ```python ... ```.
+
 """
+
     _par = [elite_soln]
     if longterm_refl is not None:
         _par.append(longterm_refl)
@@ -149,14 +200,14 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
 import random
 
 
-def reevo(initial_size=30, pop_size=10, max_samples=30, max_generations=int(1e9), crossover_rate=1.0, mutation_rate=0.5, problem_spec=None, api_spec=None, **kwargs):
+def reevo(initial_size=5, pop_size=10, max_samples=30, max_generations=int(1e9), crossover_rate=1.0, mutation_rate=0.5, problem_spec=None, api_spec=None, **kwargs):
 
     n_solns = 0
 
     with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
-        engine.start() 
+        print("in context... ps is ", type(engine._problem_spec))
         # initial pop generation
-        population = [initial_solution() for _ in range(initial_size)]
+        population = [initial_solution(engine) for _ in range(initial_size)]
         n_solns += pop_size
         longterm_refl = None
 
@@ -169,7 +220,7 @@ def reevo(initial_size=30, pop_size=10, max_samples=30, max_generations=int(1e9)
             for idxa in range(0, len(population), 2):
                 if idxa+1 >= len(population):
                     break
-                comparative_refls.append(comparative_reflection(population[idxa], population[idxa+1]))
+                comparative_refls.append(comparative_reflection(engine, population[idxa], population[idxa+1]))
                 # print('COMPARREFL\n',comparative_refls[-1])
             
             # crossover, using ST reflections and current solns
@@ -177,20 +228,20 @@ def reevo(initial_size=30, pop_size=10, max_samples=30, max_generations=int(1e9)
             for refl_idx, comparison_refl in enumerate(comparative_refls):
                 if np.random.rand() <= crossover_rate:
                     crossover_solns.append(
-                        crossover_solution(population[refl_idx*2], population[refl_idx*2+1], comparison_refl)
+                        crossover_solution(engine, population[refl_idx*2], population[refl_idx*2+1], comparison_refl)
                     )
                     n_solns += 1
             
             population.extend(crossover_solns)
             
             # long term reflection, distill past and current comparisons
-            longterm_refl = longterm_reflection(longterm_refl, comparative_refls)
+            longterm_refl = longterm_reflection(engine, longterm_refl, comparative_refls)
             # print('LTREFL\n', longterm_refl)
 
             if np.random.rand() <= mutation_rate:
                 # elitist mutation, using new heuristics and LT reflections
                 elite_soln = min(population+crossover_solns, key=lambda ss: ss.fitness * (-1+2*engine._problem_spec.maximization))
-                elite_mutated_soln = elite_mutated_solution(longterm_refl, elite_soln)
+                elite_mutated_soln = elite_mutated_solution(engine, longterm_refl, elite_soln)
                 population.append(elite_mutated_soln)
                 n_solns += 1
             # print('ELITEMUT\n',elite_mutated_solns[0])
