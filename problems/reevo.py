@@ -21,11 +21,12 @@ class InformedProblemSpec(ProblemSpec):
     external_knowledge: str = ""
 
 
+_ID = lambda f: f
 
 
 class BPPoffACOProblemSpec(InformedProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = id if not maximization else _swap_max_min
+        _signflips = _ID if not maximization else _swap_max_min
         super().__init__(
             description=BPPoffACO_prompts["description"],
             template=BPPoffACO_prompts["func_signature"] + '\n\tpass',
@@ -38,7 +39,7 @@ class BPPoffACOProblemSpec(InformedProblemSpec):
 
 class CVRPACOProblemSpec(InformedProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = id if not maximization else _swap_max_min
+        _signflips = _ID if not maximization else _swap_max_min
         super().__init__(
             description=CVRPACO_prompts["description"],
             template=CVRPACO_prompts["func_signature"] + '\n\tpass',
@@ -51,7 +52,7 @@ class CVRPACOProblemSpec(InformedProblemSpec):
 
 class MKPACOProblemSpec(InformedProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = id if maximization else _swap_max_min
+        _signflips = _ID if maximization else _swap_max_min
         super().__init__(
             description=MKPACO_prompts["description"],
             template=MKPACO_prompts["func_signature"] + '\n\tpass',
@@ -64,7 +65,7 @@ class MKPACOProblemSpec(InformedProblemSpec):
 
 class OPACOProblemSpec(InformedProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = id if maximization else _swap_max_min
+        _signflips = _ID if maximization else _swap_max_min
         super().__init__(
             description=OPACO_prompts["description"],
             template=OPACO_prompts["func_signature"] + '\n\tpass',
@@ -77,7 +78,7 @@ class OPACOProblemSpec(InformedProblemSpec):
 
 class TSPACOProblemSpec(InformedProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = id if not maximization else _swap_max_min
+        _signflips = _ID if not maximization else _swap_max_min
         super().__init__(
             description=TSPACO_prompts["description"],
             template=TSPACO_prompts["seed_func"],
