@@ -200,7 +200,7 @@ Please write an mutated function `{engine._problem_spec.entrypoint}`, according 
 import random
 
 
-def reevo(initial_size=5, pop_size=10, max_samples=30, max_generations=int(1e9), crossover_rate=1.0, mutation_rate=0.5, problem_spec=None, api_spec=None, **kwargs):
+def reevo(initial_size=30, pop_size=10, max_samples=100, max_generations=int(1e9), crossover_rate=1.0, mutation_rate=0.5, problem_spec=None, api_spec=None, **kwargs):
 
     n_solns = 0
 
