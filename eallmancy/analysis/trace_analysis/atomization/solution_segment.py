@@ -10,6 +10,8 @@ class SolutionSegment:
     soln_length: int   # number of tokens in soln as per JPlag
     start_token: int
     end_token: int     # INCLUSIVE!!!
+    start_line: Optional[int] = None  # these need to be optional
+    end_line: Optional[int] = None    # because some merge ops require fresh lookup
     original_segid: Optional[int] = None
 
     def __hash__(self):

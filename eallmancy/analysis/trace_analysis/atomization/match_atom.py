@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from eallmancy.analysis.trace_analysis.atomization.embeddings import get_openai_embeddings
 from eallmancy.analysis.trace_analysis.atomization.solution_segment import SolutionSegment
 from eallmancy.analysis.trace_analysis.utils import cosine_sim
-from eallmancy.analysis.trace_analysis.segm_printing import *
+from eallmancy.analysis.trace_analysis.segm_printing import _find_token_spanning_lines, simple_atom_substrs
 
 
 
@@ -175,6 +175,18 @@ class MatchAtom:
             [e.copy() for e in self.entries if e.soln_id in allowed_soln_ids],
             cache=dict() if reset_cache else self.cache.copy()
         )
+    
+    def update_metadata(self, trace, tcmp):
+        for m in self.entries:
+            if m.soln_id == -1:
+                continue
+            stl, enl = _find_token_spanning_lines(
+                trace[m.soln_id].program,
+                m.start_token, m.end_token,
+                tcmp['submissions'][m.soln_id]['tokenList'],
+            )
+            m.start_line = stl
+            m.end_line = enl
 
     @property
     def is_empty(self):

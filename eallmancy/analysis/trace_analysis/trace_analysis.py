@@ -15,7 +15,8 @@ import numpy as np
 import networkx as nx
 
 
-
+def _DEFAULT_FITNESS_STATS():
+    return {'refine_fitness_sum': 0, 'refine_fitness_cnt': 0}
 
 class TraceAnalysis:
     def __init__(self, **kwargs):
@@ -27,7 +28,7 @@ class TraceAnalysis:
         self.last_seen_graph = nx.DiGraph()
 
         # localized fitness memoization
-        self.local_fitness_stats = defaultdict(lambda : {'refine_fitness_sum': 0, 'refine_fitness_cnt': 0})
+        self.local_fitness_stats = defaultdict(_DEFAULT_FITNESS_STATS)
 
         # heritage distance memoization
         self.ancestor_mapdists = dict()
@@ -120,20 +121,29 @@ class TraceAnalysis:
 
         self.idea_extractor_cache.hook(art, ttrace, solution_id_filter=local_neighborhood)
 
+    @property
+    def distilled_ideas(self):
+        return self.idea_extractor_cache._idea_reflections
+
     def hook(self, ttrace):
         ## THIS IS WHAT WE WILL GET EVERY TIME A TRACE UPDATES
+        new_art = ttrace.list[-1]
+        print(f'TAhook {new_art.trace_id}')
         
         self.update_localized_fitnesses(ttrace)
 
         self.update_heritage_distances(ttrace)
 
+        if new_art.is_solution:
+            print('\t',self.ancestor_mapdists[new_art.trace_id])
+
         self.update_idea_extraction(ttrace)
 
         self.last_seen_solutions = [a for a in ttrace.list if a.is_solution]
 
-        non_soln_nodes = {n for n, d in ttrace.graph.nodes(data=True) if not d['artifact'].is_solution}
-        soln_only_G = ttrace.graph.subgraph(set(ttrace.graph.nodes)-non_soln_nodes)
-        self.last_seen_graph = soln_only_G
+        # non_soln_nodes = {n for n, d in ttrace.graph.nodes(data=True) if not d['artifact'].is_solution}
+        # soln_only_G = ttrace.graph.subgraph(set(ttrace.graph.nodes)-non_soln_nodes)
+        self.last_seen_graph = ttrace.graph
 
 
 

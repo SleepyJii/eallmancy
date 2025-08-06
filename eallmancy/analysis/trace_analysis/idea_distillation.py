@@ -84,7 +84,10 @@ This list should be in markdown format starting with solution indices in a code 
     return art
 
 
+NEWL_ = "\n"
 
+def _snippet_tag(solnid, snip):
+    return f"Solution {solnid} [SNIPPET]{NEWL_}```{snip}```"
 
 class DistilledIdea(Artifact):
     def __init__(self, response, *args, **kwargs):
@@ -92,16 +95,17 @@ class DistilledIdea(Artifact):
 
         self.is_solution = False
         self.solution_members = []
-        self.originating_atom_id = None
-        self.snippet_example_str = ''
+        self.originating_atom = None
+        self.snippets = dict()
     
+    @property
+    def snippets_str(self):
+        return '\n'.join([_snippet_tag(k, v) for k, v in self.snippets.items()])
+        # return '\n'.join(list(self.snippets.values()))
+
     @property
     def analysis(self):
         return self.raw_resp
-    
-    @property
-    def entries(self):
-        return self.clusters
     
     def proxy_fitness(self, graph_nodes) -> float:
         # figure out how we should consider the 'fitness' of this distilled idea
@@ -114,21 +118,18 @@ class DistilledIdea(Artifact):
             return sum(ftns) * 1.0 / len(ftns)
 
 
-
-NEWL_ = "\n"
-
 def build_idea_distillation(atm, ttrace, engine, tcmp):
 
     def _grab_snippet(s_entry):
-        prelude = f"Solution {s_entry.soln_id} [SNIPPET]"
-        text = (simple_segm_substr(
+        return (simple_segm_substr(
             ttrace[s_entry.soln_id].program,
             s_entry.start_token, s_entry.end_token,
             tcmp['submissions'][s_entry.soln_id]['tokenList']
         ))
-        return f'{prelude}{NEWL_}```{NEWL_}{text}{NEWL_}```'
+    
     # pprint = _prmpt_print_atom(atm, ttrace, tcmp)
-    pprint = NEWL_.join([_grab_snippet(e) for e in atm.entries])
+    all_snippets = {e.soln_id: _grab_snippet(e) for e in atm.entries}
+    pprint = NEWL_.join([_snippet_tag(k, v) for k, v in all_snippets.items()])
     prmpt = f"""
 A team has been working on implementations of the following function:
 ```\n{engine._problem_spec.template}```
@@ -160,8 +161,8 @@ Do not give markdown headers, just provide your analysis in several or fewer sho
 """
     art, _ = engine.build_artifact(prmpt, DistilledIdea, register=False)
     art.solution_members = atm.solution_members()
-    art.originating_atom_id = atm.cache.get('id', None)
-    art.snippet_example_str = pprint
+    art.originating_atom = atm.copy()
+    art.snippets = all_snippets
 
     # TODO: remove registration! really should be handled elsewhere...
     engine.register_artifact(art, parents=[ttrace[p] for p in art.solution_members], disable_hooks=True, operation_name="IdeaDistillation")
