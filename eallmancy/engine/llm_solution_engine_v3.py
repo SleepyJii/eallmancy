@@ -68,6 +68,7 @@ class EngineSetupContext:
         self._engine._sampler = self._new_sampler
         self._engine._problem_spec = self._new_pspec
         self._engine.start()
+        print("ENGINE STARTED, PS set to", self._new_pspec)
         return self
 
     def __exit__(self, type, value, traceback):

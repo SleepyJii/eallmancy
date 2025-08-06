@@ -1,5 +1,6 @@
 
 import requests
+import backoff
 import numpy as np
 from collections import defaultdict
 import itertools
@@ -74,6 +75,9 @@ def distinct_subsegments(atom_list, persp_id, soln_filter=None, neg_filter=False
             yield yld_seq, list(set.union(*[set(a.solution_members()) for a in yld_seq]))
 
 
+
+
+@backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_tries=3,)
 def get_openai_embeddings(
     prompts,
     api_key: str = os.environ.get('OPENAI_API_KEY'),
@@ -154,6 +158,9 @@ def glom_cont_segments(seg_ls):
     min_st = min(map(lambda x: x.start_token, seg_ls))
     max_en = max(map(lambda x: x.end_token, seg_ls))
     new_seg = SolutionSegment(seg_ls[0].soln_id, seg_ls[0].soln_length, min_st, max_en)
+    if len([s for s in seg_ls if s.start_line is not None])>0:
+        new_seg.start_line = min([s for s in seg_ls if s.start_line is not None], default=None)
+        new_seg.end_line = max([s for s in seg_ls if s.end_line is not None], default=None)
     if len({ss.original_segid for ss in seg_ls}) == 1:
         new_seg.original_segid = seg_ls[0].original_segid
     return new_seg
@@ -173,12 +180,12 @@ def should_merge(new_atm: MatchAtom, old_atm: MatchAtom, applied_soln_filter=Non
             return False
         
         ## ALLOWING 90% OVERLAP!!!!    TODO: is this actually OK?
-        metric = (min(my_seg.end_token, ot_seg.end_token) - max(my_seg.start_token, ot_seg.start_token)) / min(my_seg.length, ot_seg.length)
+        metric = (1 + min(my_seg.end_token, ot_seg.end_token) - max(my_seg.start_token, ot_seg.start_token)) / min(my_seg.length, ot_seg.length)
         if metric < required_overlap:
             return False
         
-        if cosine_sim(new_atm.cache['embedding'], old_atm.cache['embedding']) < required_cosinesim:
-            return False
+    if cosine_sim(new_atm.cache['embedding'], old_atm.cache['embedding']) < required_cosinesim:
+        return False
 
     # and disjoint solutions only in newer, where disjoint additions are newer than older...
     old_atm_age = max(old_solns)
@@ -186,16 +193,20 @@ def should_merge(new_atm: MatchAtom, old_atm: MatchAtom, applied_soln_filter=Non
         if s < old_atm_age: # solution old enough to be seen by older
             if applied_soln_filter is not None and s in applied_soln_filter: # solution 
                 return False
-    return True
 
     # then good to merge.
+    return True
 
+
+
+def _DEFAULTLIST():
+    return []
 ## new rolling cached approach
 
 class ClusteredSegmentsMap:
     def __init__(self):
-        self._soln_map = defaultdict(lambda : [])
-        self._segset_map = defaultdict(lambda : [])
+        self._soln_map = defaultdict(_DEFAULTLIST)
+        self._segset_map = defaultdict(_DEFAULTLIST)
         self._active_map = dict()
         self._id_generator = count()
 
@@ -232,9 +243,11 @@ class ClusteredSegmentsMap:
             to_consider_merge = list(self._soln_map[s_id])
             for s_atm in to_consider_merge:
                 if should_merge(atm, s_atm, applied_soln_filter=applied_soln_filter):
-                    print('\t\tperforming ACCRETE_MERGE')
+                    print('\t\tperforming ACCRETE_MERGE', atm.solution_members(), s_atm.solution_members())
                     atm = atm.accrete(s_atm)  # accrete
                     self.remove(s_atm)  # delete old
+                else:
+                    print('\t\tconcluded_dissimilar', atm.solution_members(), s_atm.solution_members())
 
         self.add(atm)
         return atm
@@ -262,7 +275,6 @@ CHATGPT_4O_MINI = {
 
 }
 
-
 class IdeaExtractorCache:
     def __init__(self, ps, **kwargs):
 
@@ -275,14 +287,14 @@ class IdeaExtractorCache:
         # TODO: register the template program
         self._template_program = ps.template
 
-        self._soln_atoms = defaultdict(lambda : [])
+        self._soln_atoms = defaultdict(_DEFAULTLIST)
 
-        self._clustered_segments = ClusteredSegmentsMap() # defaultdict(lambda : [])
+        self._clustered_segments = ClusteredSegmentsMap() # defaultdict(_DEFAULTLIST)
         self._idea_reflections = dict()
 
         self.ignore_jplagapi_status = kwargs.get('ignore_jplagapi_status', True)
         self.min_match_tokens = kwargs.get('min_match_tokens', 6)
-        self.min_match_members = kwargs.get('min_match_members', 3)
+        self.min_match_members = kwargs.get('min_match_members', 2)
         self.min_match_embeddingsim = kwargs.get('min_match_embeddingsim', 0.90)
 
         
@@ -294,6 +306,7 @@ class IdeaExtractorCache:
             problem_spec=ps,
             tracing=False
         )
+        self._internal_engine.start()
 
 
     def _update_jplag(self, new_soln, ttrace, solution_id_filter=None):
@@ -337,7 +350,7 @@ class IdeaExtractorCache:
         new_comparisons.update(ttcmp['comparisons'])
         return new_comparisons
     
-    def _update_atoms(self, new_persp_id, new_comparisons=None):
+    def _update_atoms(self, new_persp_id, ttrace, new_comparisons=None):
 
         new_id_submd = self._tcmp['submissions'][new_persp_id]
 
@@ -381,6 +394,8 @@ class IdeaExtractorCache:
                     self._soln_atoms[sn],
                     new_atom
                 )
+                for atm in self._soln_atoms[fn] + self._soln_atoms[sn]:
+                    atm.update_metadata(ttrace, self._tcmp)
                 affected_soln_ids = affected_soln_ids.union({fn, sn})
         
         return list(affected_soln_ids)
@@ -436,16 +451,18 @@ class IdeaExtractorCache:
             ## filter atom down to own matches at least 95% codemb with node_idx
             seg_atom = codeemb_filter_atom(persp_id, seg_atom, ttrace, tcmp, cutoff=ce_cutoff, cached_embeddings=cached_embeddings)
             if len(seg_atom.solution_members()) < min_members:
+                print(f'\tcode emb filter drops {len(seg_atom.solution_members())} members below {min_members}')
                 continue
 
             ## we now believe this is worth scraping. Use the engine to scrape out meaningful semantic clusters
             distilled_clusters: DistilledIdeaClusters = distill_atom_clusters(seg_atom, ttrace, engine, tcmp)
             for cluster_mems, cluster_desc in distilled_clusters.entries.items():
                 
-                if len(cluster_mems) < min_members:
+                if len(cluster_mems) < 2: # I think at this point I would believe any claims of matching pairs.
                     continue
                 
                 # we are now finally satisfied with the overlapping sequences being meaningfully similar. append to results list
+                print('\tcluster identified')
                 seg_atoms.append(seg_atom.filter_solutions(cluster_mems, reset_cache=False).set_description(cluster_desc))
         return seg_atoms
 
@@ -481,7 +498,7 @@ class IdeaExtractorCache:
 
 
         new_comparisons = self._update_jplag(new_soln, ttrace, solution_id_filter=solution_id_filter)
-        affected_soln_ids = self._update_atoms(new_persp_id=new_soln_id, new_comparisons=new_comparisons)
+        affected_soln_ids = self._update_atoms(new_persp_id=new_soln_id, ttrace=ttrace, new_comparisons=new_comparisons)
         new_idea_segments = self._scrape_idea_segments(
             persp_id=new_soln_id, ttrace=ttrace,
             affected_soln_ids=affected_soln_ids, applied_soln_filter=solution_id_filter
