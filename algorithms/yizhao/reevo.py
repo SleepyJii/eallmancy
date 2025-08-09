@@ -256,7 +256,7 @@ def reevo(initial_size=30, pop_size=10, max_samples=100, max_generations=int(1e9
                 for c_idx, c_art in enumerate(population):
                     if ec.trace.trace_analysis.distilled_dist(m_art.trace_id, c_art.trace_id) > 0.96:
                         clust.append(c_art)
-                clust = list(sorted(clust, key=lambd aart: aart.fitness, reverse=engine._problem_spec.maximization))
+                clust = list(sorted(clust, key=lambda aart: aart.fitness, reverse=engine._problem_spec.maximization))
                 filtered_pop.append(clust[0]) # keep the best
                 population = [p for p in population if p not in clust] # exclude dupes
             population = filtered_pop
