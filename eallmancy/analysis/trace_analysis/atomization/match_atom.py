@@ -130,8 +130,9 @@ class MatchAtom:
         my_solns = self.solution_members()
         other_solns = atm.solution_members()
         overlap_solns = set(my_solns).intersection(other_solns)
-        new_entries = [e for e in self.entries if e.soln_id in my_solns and e.soln_id not in overlap_solns]
-        new_entries.extend([e for e in atm.entries if e.soln_id in other_solns and e.soln_id not in my_solns])
+        # new_entries = [e for e in self.entries if e.soln_id in my_solns and e.soln_id not in overlap_solns]
+        # new_entries.extend([e for e in atm.entries if e.soln_id in other_solns and e.soln_id not in my_solns])
+        new_entries = []
         for s in overlap_solns:
             # confirm that relevant entries are overlapping, or raise
             my_seg: SolutionSegment = self.get(s)
@@ -153,6 +154,26 @@ class MatchAtom:
             if my_seg.end_line is not None and ot_seg.end_line is not None:
                 new_seg.end_line = max(my_seg.end_line, ot_seg.end_line)
             new_entries.append(new_seg)
+        
+        # calculate how to adjust non-overlapping segments
+        ot_st_adj, ot_en_adj = (ot_seg.start_token - new_seg.start_token, new_seg.end_token - ot_seg.end_token)
+        my_st_adj, my_en_adj = (my_seg.start_token - new_seg.start_token, new_seg.end_token - my_seg.end_token)
+
+        for s in other_solns.difference(overlap_solns):
+            ot_atm = atm.get(s)
+            new_entries.append(
+                ot_atm.copy()
+                .set_start_token(ot_atm.start_token-ot_st_adj)
+                .set_end_token(ot_atm.end_token + ot_en_adj)
+            )
+        for s in my_solns.difference(overlap_solns):
+            my_atm = self.get(s)
+            new_entries.append(
+                my_atm.copy()
+                .set_start_token(my_atm.start_token-my_st_adj)
+                .set_end_token(my_atm.end_token + my_en_adj)
+            )
+        # ot_seg.start - ot_st_adj, ot_seg.end + ot_en_adj
             
         res = MatchAtom(new_entries, '\n'.join([dsc for dsc in [self.description, atm.description] if dsc is not None]) or None)
 

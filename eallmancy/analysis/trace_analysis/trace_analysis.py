@@ -141,6 +141,8 @@ class TraceAnalysis:
         
         return hasmatch_memo.sum() * (0.5 / a_tokenlen + 0.5 / b_tokenlen)
 
+    def solution_tokens(self, s_idx):
+        return self.idea_extractor_cache._tcmp['submissions'][s_idx]['numberOfTokens']
 
     def hook(self, ttrace):
         ## THIS IS WHAT WE WILL GET EVERY TIME A TRACE UPDATES
