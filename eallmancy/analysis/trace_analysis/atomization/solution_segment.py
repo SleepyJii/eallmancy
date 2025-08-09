@@ -22,7 +22,11 @@ class SolutionSegment:
         return self.__hash__() == oth.__hash__()
     
     def copy(self):
-        return SolutionSegment(self.soln_id, self.soln_length, self.start_token, self.end_token, self.original_segid)
+        return SolutionSegment(
+            self.soln_id, self.soln_length,
+            self.start_token, self.end_token, start_line=self.start_line, end_line=self.end_line,
+            original_segid=self.original_segid
+        )
     
     @property
     def length(self): return 1 + self.end_token - self.start_token

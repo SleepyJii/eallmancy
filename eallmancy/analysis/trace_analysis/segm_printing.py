@@ -52,7 +52,7 @@ def find_tokenrange_substrs(program_str, st_tkn, en_tkn, tkn_list):
     token_start_idxs.append(final_idx)
     return [program_str[st:en] for st, en in zip(token_start_idxs, token_start_idxs[1:])]
 
-def _find_token_spanning_lines(program_str, st_tkn, en_tkn, tkn_list):
+def _find_token_line_indices(program_str, st_tkn, en_tkn, tkn_list):
     st_tkn_linestart = _find_line_stidx(program_str,tkn_list[st_tkn]['line']-1)
     en_tkn_lineend = _find_line_enidx(program_str,tkn_list[en_tkn]['line']-1)
 
@@ -61,13 +61,20 @@ def _find_token_spanning_lines(program_str, st_tkn, en_tkn, tkn_list):
     return st_tkn_linestart, en_tkn_lineend
 
 
+def _find_token_line_nums(prgrm, st_tkn, en_tkn, tkn_list):
+    st_tkn_cidx, en_tkn_cidx = _find_token_line_indices(
+        prgrm, st_tkn, en_tkn, tkn_list
+    )
+    return len(prgrm[:st_tkn_cidx].split('\n')), len(prgrm[:en_tkn_cidx].split('\n'))
+
+
+
 def simple_segm_substr(program_str, st_tkn, en_tkn, tkn_list):
-    st_tkn_linestart, en_tkn_lineend = _find_token_spanning_lines(program_str, st_tkn, en_tkn, tkn_list)
+    st_tkn_linestart, en_tkn_lineend = _find_token_line_indices(program_str, st_tkn, en_tkn, tkn_list)
     nx_tkn_linestart = _find_line_stidx(program_str, tkn_list[min(en_tkn+1, len(tkn_list)-1)]['line']-1)
     return program_str[
     st_tkn_linestart:max(en_tkn_lineend,nx_tkn_linestart)
     ]
-
 
 
 
