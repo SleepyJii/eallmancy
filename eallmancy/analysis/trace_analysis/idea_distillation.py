@@ -67,6 +67,11 @@ def _prmpt_print_atom(atm, ttrace, subm_stats):
 
 
 def distill_atom_clusters(atm, ttrace, engine, tcmp: Dict):
+
+    emptyidc = DistilledIdeaClusters("")
+    emptyidc.clusters = {frozenset(atm.solution_members()): ''}
+    return emptyidc
+
     prmpt = f"""
 A team of scientists have been working on implementations of the following function:
 ```\n{engine._problem_spec.template}```
@@ -117,6 +122,16 @@ class DistilledIdea(Artifact):
         else:
             return sum(ftns) * 1.0 / len(ftns)
 
+    def __str__(self):
+        return f"""
+[[DistilledIdea {self.trace_id}]]
+
+[Code]
+{self.snippets_str}
+
+[Analysis]
+{self.analysis}
+"""
 
 def build_idea_distillation(atm, ttrace, engine, tcmp):
 
@@ -165,6 +180,8 @@ Do not give markdown headers, just provide your analysis in several or fewer sho
     art.snippets = all_snippets
 
     # TODO: remove registration! really should be handled elsewhere...
+
+    # keep it, gives trace_id's
     engine.register_artifact(art, parents=[ttrace[p] for p in art.solution_members], disable_hooks=True, operation_name="IdeaDistillation")
 
     return art

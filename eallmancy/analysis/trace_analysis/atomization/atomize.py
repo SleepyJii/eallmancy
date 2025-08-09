@@ -72,7 +72,13 @@ def marginal_atomize_match(persp_id: int, existing_matches: List[MatchAtom], new
 
         existing_matches = new_atoms
 
-    return [em for em in existing_matches if em.get(persp_id) is not None]
+    # todo: remove when we trust our code again
+    final_atoms = list(sorted([em for em in existing_matches if em.get(persp_id) is not None], key=lambda a: a.get(persp_id).start_token))
+    for a,b in zip(final_atoms, final_atoms[1:]):
+        if b.get(persp_id).start_token - a.get(persp_id).end_token != 1:
+            raise Exception("ATOMIZATION IS FUCKED")
+
+    return final_atoms
 
 
 

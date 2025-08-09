@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from eallmancy.analysis.trace_analysis.atomization.embeddings import get_openai_embeddings
 from eallmancy.analysis.trace_analysis.atomization.solution_segment import SolutionSegment
 from eallmancy.analysis.trace_analysis.utils import cosine_sim
-from eallmancy.analysis.trace_analysis.segm_printing import _find_token_spanning_lines, simple_atom_substrs
+from eallmancy.analysis.trace_analysis.segm_printing import _find_token_line_nums, _find_token_line_indices, simple_atom_substrs
 
 
 
@@ -21,6 +21,13 @@ class MatchAtom:
         #         raise Exception("why are we invalidating?")  # TODO: remove, leaving this here for debugging.
             #     print('invalidating',e)
         self.entries = [e for e in self.entries if e.is_valid]
+
+        lens = [s.length for s in self.entries]
+        if max(lens) != min(lens):
+            raise Exception('length mismatch in atom. we aint having it anymore')
+        if max(lens) > np.ceil(1.5*min(lens)):
+            raise Exception('Crazy length mismatch within atom!')
+
         return self
 
     def __post_init__(self):
@@ -131,7 +138,7 @@ class MatchAtom:
             ot_seg: SolutionSegment = atm.get(s)
             if my_seg.start_token > ot_seg.end_token or my_seg.end_token < ot_seg.start_token:
                 raise Exception("attempting to accrete disjoint atoms")
-            new_entries.append(
+            new_seg = (
                 # extended segment
                 SolutionSegment(
                     s,
@@ -141,12 +148,20 @@ class MatchAtom:
                     my_seg.original_segid or ot_seg.original_segid
                 )
             )
+            if my_seg.start_line is not None and ot_seg.start_line is not None:
+                new_seg.start_line = min(my_seg.start_line, ot_seg.start_line)
+            if my_seg.end_line is not None and ot_seg.end_line is not None:
+                new_seg.end_line = max(my_seg.end_line, ot_seg.end_line)
+            new_entries.append(new_seg)
+            
         res = MatchAtom(new_entries, '\n'.join([dsc for dsc in [self.description, atm.description] if dsc is not None]) or None)
 
-        # special condition for code embedding maintenance in cache
+        # special condition for cache
         if 'embedding' in self.cache.keys() and 'embedding' in atm.cache.keys():
             res = res.update_cache(embedding=(self.cache['embedding']*len(self.entries) + atm.cache['embedding']*len(atm.entries))/(len(self.entries)+len(atm.entries)))
         
+
+
         return res
 
     def set(self, perspective_id: int, start_token: Optional[int] = None, end_token: Optional[int] = None):
@@ -180,13 +195,22 @@ class MatchAtom:
         for m in self.entries:
             if m.soln_id == -1:
                 continue
-            stl, enl = _find_token_spanning_lines(
+        return self.update_line_numbers(trace, tcmp)
+    
+    def update_line_numbers(self, trace, tcmp):
+        entries = []
+        for m in self.entries:
+            if m.soln_id == -1: continue
+            stl, enl = _find_token_line_nums(
                 trace[m.soln_id].program,
                 m.start_token, m.end_token,
                 tcmp['submissions'][m.soln_id]['tokenList'],
             )
             m.start_line = stl
             m.end_line = enl
+            entries.append(m)
+        self.entries = entries
+        return self
 
     @property
     def is_empty(self):

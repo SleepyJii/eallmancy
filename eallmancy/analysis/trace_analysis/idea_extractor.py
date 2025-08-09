@@ -20,6 +20,64 @@ from eallmancy.analysis.trace_analysis.idea_distillation import DistilledIdeaClu
 
 
 
+# def distinct_subsegments(atom_list, persp_id, soln_filter=None, neg_filter=False):
+#     """
+#     Yields contiguous sequences of atoms where:
+#       - the solution memberships intersect (non-trivially) with `soln_filter` (if provided),
+#       - and the combination of token interval & membership set is unique.
+#     """
+
+#     atom_list = sorted(atom_list, key=lambda a: a.get(persp_id).start_token)
+
+#     if soln_filter is None:
+#         matching_solns = [list({a.soln_id for a in a.entries}) for a in atom_list]
+#         all_matching_solns = set(chain(*matching_solns))
+#         soln_filter = all_matching_solns
+#     else:
+#         soln_filter = set(soln_filter).union({persp_id})
+
+#     def atom_memberships(atom):
+#         # using original_segid here because it makes more sense
+#         # while still applying the soln_filter
+#         return set(e.original_segid for e in atom.entries if e.soln_id in soln_filter)
+
+#     seen_memberset_endings = defaultdict(lambda : [])
+#     last_membership = frozenset({})
+#     n = len(atom_list)
+
+#     for start in range(n):
+#         memberships = atom_memberships(atom_list[start])
+
+#         if neg_filter and min(atom_list[start].solution_members()) < 0:
+#             continue
+
+#         # curr_start_token = atom_list[start].get(persp_id).start_token
+#         # curr_end_token = atom_list[start].get(persp_id).end_token
+#         curr_memberships = frozenset(memberships.copy())
+        
+#         if start <= max(seen_memberset_endings[frozenset(curr_memberships)], default=-1):
+#             # we've already seen an ending with these members in the future, so we are within old seg --> skip
+#             continue
+
+#         # extend until we see loss of a member
+#         for end in range(start+1, n):
+#             lost_seg_members = curr_memberships.difference(atom_memberships(atom_list[end]))
+#             if len(lost_seg_members) > 0:
+#                 seen_memberset_endings[curr_memberships].append(end-1)
+#                 yld_seq = [a.filter_solutions(soln_filter) for a in atom_list[start:end]]
+#                 yield yld_seq, list(set.intersection(*[set(a.solution_members()) for a in yld_seq]))
+
+#                 curr_memberships = curr_memberships.difference(lost_seg_members)
+#         else:
+#             end = min(end+1,n)
+#             seen_memberset_endings[curr_memberships].append(end)
+#             yld_seq = [a.filter_solutions(soln_filter) for a in atom_list[start:end]]
+#             yield yld_seq, list(set.intersection(*[set(a.solution_members()) for a in yld_seq]))
+
+
+
+
+
 def distinct_subsegments(atom_list, persp_id, soln_filter=None, neg_filter=False):
     """
     Yields contiguous sequences of atoms where:
@@ -37,9 +95,7 @@ def distinct_subsegments(atom_list, persp_id, soln_filter=None, neg_filter=False
         soln_filter = set(soln_filter).union({persp_id})
 
     def atom_memberships(atom):
-        # using original_segid here because it makes more sense
-        # while still applying the soln_filter
-        return set(e.original_segid for e in atom.entries if e.soln_id in soln_filter)
+        return set(e.soln_id for e in atom.entries if e.soln_id in soln_filter)
 
     seen_memberset_endings = defaultdict(lambda : [])
     last_membership = frozenset({})
@@ -51,8 +107,6 @@ def distinct_subsegments(atom_list, persp_id, soln_filter=None, neg_filter=False
         if neg_filter and min(atom_list[start].solution_members()) < 0:
             continue
 
-        # curr_start_token = atom_list[start].get(persp_id).start_token
-        # curr_end_token = atom_list[start].get(persp_id).end_token
         curr_memberships = frozenset(memberships.copy())
         
         if start <= max(seen_memberset_endings[frozenset(curr_memberships)], default=-1):
@@ -61,18 +115,28 @@ def distinct_subsegments(atom_list, persp_id, soln_filter=None, neg_filter=False
 
         # extend until we see loss of a member
         for end in range(start+1, n):
-            lost_seg_members = curr_memberships.difference(atom_memberships(atom_list[end]))
+            if len(curr_memberships) == 1:
+                continue
+            
+            breakages = {
+                m: (float('inf') if atom_list[end].get(m) is None else atom_list[end].get(m).start_token - atom_list[end-1].get(m).end_token - 1)
+                for m in curr_memberships
+            }
+            lost_seg_members = { m for m, bv in breakages.items() if bv != 0 }
             if len(lost_seg_members) > 0:
                 seen_memberset_endings[curr_memberships].append(end-1)
                 yld_seq = [a.filter_solutions(soln_filter) for a in atom_list[start:end]]
-                yield yld_seq, list(set.union(*[set(a.solution_members()) for a in yld_seq]))
+                yield yld_seq, curr_memberships # these are solutions again.
 
                 curr_memberships = curr_memberships.difference(lost_seg_members)
         else:
-            end = min(start+1,n)
-            seen_memberset_endings[curr_memberships].append(end)
-            yld_seq = [a.filter_solutions(soln_filter) for a in atom_list[start:end]]
-            yield yld_seq, list(set.union(*[set(a.solution_members()) for a in yld_seq]))
+            if len(curr_memberships) != 1:
+                end = min(end+1,n)
+                seen_memberset_endings[curr_memberships].append(end)
+                yld_seq = [a.filter_solutions(soln_filter) for a in atom_list[start:end]]
+                yield yld_seq, list(set.intersection(*[set(a.solution_members()) for a in yld_seq]))
+
+
 
 
 
@@ -159,18 +223,29 @@ def glom_cont_segments(seg_ls):
     max_en = max(map(lambda x: x.end_token, seg_ls))
     new_seg = SolutionSegment(seg_ls[0].soln_id, seg_ls[0].soln_length, min_st, max_en)
     if len([s for s in seg_ls if s.start_line is not None])>0:
-        new_seg.start_line = min([s for s in seg_ls if s.start_line is not None], default=None)
-        new_seg.end_line = max([s for s in seg_ls if s.end_line is not None], default=None)
+        new_seg.start_line = min([s.start_line for s in seg_ls if s.start_line is not None], default=None)
+        new_seg.end_line = max([s.end_line for s in seg_ls if s.end_line is not None], default=None)
     if len({ss.original_segid for ss in seg_ls}) == 1:
         new_seg.original_segid = seg_ls[0].original_segid
     return new_seg
 
 
-def should_merge(new_atm: MatchAtom, old_atm: MatchAtom, applied_soln_filter=None, required_overlap=0.9, required_cosinesim=0.95):
+def should_merge(new_atm: MatchAtom, old_atm: MatchAtom, applied_soln_filter=None, required_overlap=0.9, required_cosinesim=0.9):
     
     my_solns = new_atm.solution_members()
     old_solns = old_atm.solution_members()
     overlap_solutions = set(my_solns).intersection(old_solns).intersection(applied_soln_filter or my_solns)
+
+    # if they coincide EVERY TIME...
+    if my_solns.intersection(old_solns) == my_solns.union(old_solns):
+        # ...and *always* have some overlap in every soln....
+        if all([
+                (new_atm.get(s).start_token < old_atm.get(s).end_token)
+                and (old_atm.get(s).start_token < new_atm.get(s).end_token)
+                for s in overlap_solutions
+            ]):
+            return True  # ACCRETE
+
     # if overlap solutions all have overlapping segments..
     for s in overlap_solutions:
         # confirm that relevant entries are overlapping, or raise
@@ -180,6 +255,9 @@ def should_merge(new_atm: MatchAtom, old_atm: MatchAtom, applied_soln_filter=Non
             return False
         
         ## ALLOWING 90% OVERLAP!!!!    TODO: is this actually OK?
+        ## no its fucking not you retard
+        if my_seg.length != ot_seg.length:
+            return False
         metric = (1 + min(my_seg.end_token, ot_seg.end_token) - max(my_seg.start_token, ot_seg.start_token)) / min(my_seg.length, ot_seg.length)
         if metric < required_overlap:
             return False
@@ -187,12 +265,15 @@ def should_merge(new_atm: MatchAtom, old_atm: MatchAtom, applied_soln_filter=Non
     if cosine_sim(new_atm.cache['embedding'], old_atm.cache['embedding']) < required_cosinesim:
         return False
 
-    # and disjoint solutions only in newer, where disjoint additions are newer than older...
-    old_atm_age = max(old_solns)
-    for s in set(my_solns).difference(set(old_solns)):
-        if s < old_atm_age: # solution old enough to be seen by older
-            if applied_soln_filter is not None and s in applied_soln_filter: # solution 
-                return False
+    # THIS WAS A STUPID FKING IDEA
+    # heritage paths mean that the same idea can *easily* arise several times without intersection. cant just use age!
+
+    # # and disjoint solutions only in newer, where disjoint additions are newer than older...
+    # old_atm_age = max(old_solns)
+    # for s in set(my_solns).difference(set(old_solns)):
+    #     if s < old_atm_age: # solution old enough to be seen by older
+    #         if applied_soln_filter is not None and s in applied_soln_filter: # solution 
+    #             return False
 
     # then good to merge.
     return True
@@ -229,6 +310,7 @@ class ClusteredSegmentsMap:
     def add(self, atm):
         new_idx = next(self._id_generator)
         atm.update_cache(id=new_idx)
+        print('\t\tadded new idea:', new_idx, atm.solution_members())
         segset = frozenset(atm.originalseg_members())
         for soln_id in atm.solution_members():
             self._soln_map[soln_id] = list(set(self._soln_map[soln_id]+[atm]))
@@ -239,16 +321,24 @@ class ClusteredSegmentsMap:
         segset = frozenset(atm.originalseg_members())
         solns = atm.solution_members()
 
+        merged_atms = []
         for s_id in set(solns).intersection(applied_soln_filter or solns):
             to_consider_merge = list(self._soln_map[s_id])
             for s_atm in to_consider_merge:
                 if should_merge(atm, s_atm, applied_soln_filter=applied_soln_filter):
-                    print('\t\tperforming ACCRETE_MERGE', atm.solution_members(), s_atm.solution_members())
+                    print('\t\tperforming ACCRETE_MERGE', '', atm.solution_members(), s_atm.solution_members(), f'[{s_atm.cache["id"]}]')
+                    if s_id == 57:
+                        print(f'\t\t\ts_atm was 57:{s_atm.get(57).start_line}-{s_atm.get(57).end_line}')
                     atm = atm.accrete(s_atm)  # accrete
+                    merged_atms.append(s_atm)
                     self.remove(s_atm)  # delete old
                 else:
-                    print('\t\tconcluded_dissimilar', atm.solution_members(), s_atm.solution_members())
+                    print('\t\tconcluded_dissimilar', atm.solution_members(), s_atm.solution_members(), f'[{s_atm.cache["id"]}]')
 
+        if merged_atms != []:
+            print('\t\taccreted old ideas:',[(a.cache['id'], a.solution_members()) for a in merged_atms])
+        if 57 in atm.solution_members():
+            print(f'\t\t\t added atm for 57:{atm.get(57).start_line}-{atm.get(57).end_line}')
         self.add(atm)
         return atm
     
@@ -295,7 +385,7 @@ class IdeaExtractorCache:
         self.ignore_jplagapi_status = kwargs.get('ignore_jplagapi_status', True)
         self.min_match_tokens = kwargs.get('min_match_tokens', 6)
         self.min_match_members = kwargs.get('min_match_members', 2)
-        self.min_match_embeddingsim = kwargs.get('min_match_embeddingsim', 0.90)
+        self.min_match_embeddingsim = kwargs.get('min_match_embeddingsim', 0.95)
 
         
         # giga-brain dependency hacking
@@ -366,43 +456,37 @@ class IdeaExtractorCache:
         affected_soln_ids = { new_persp_id }
         for (fn, sn), segm in soln_segms.items():
             for segm_match in segm['matches']:
-                new_atom = MatchAtom(entries=[
-                    SolutionSegment(
-                        fn,
-                        soln_length=self._tcmp['submissions'][fn]['numberOfTokens'],
-                        start_token=segm_match['startOfFirst'],
-                        end_token=min(segm_match['startOfFirst']+segm_match['length']-1, self._tcmp['submissions'][fn]['numberOfTokens']-1),
-                        original_segid=segm_match['id']
-                    ),
-                    SolutionSegment(
-                        sn,
-                        soln_length=self._tcmp['submissions'][sn]['numberOfTokens'],
-                        start_token=segm_match['startOfSecond'],
-                        end_token=min(segm_match['startOfSecond']+segm_match['length']-1, self._tcmp['submissions'][sn]['numberOfTokens']-1),
-                        original_segid=segm_match['id']
-                    ),
-            
-                ])
-                # print(new_atom)
-                self._soln_atoms[fn] = marginal_atomize_match(
+                fs = SolutionSegment(
                     fn,
-                    self._soln_atoms[fn],
-                    new_atom
+                    soln_length=self._tcmp['submissions'][fn]['numberOfTokens'],
+                    start_token=segm_match['startOfFirst'],
+                    end_token=min(segm_match['startOfFirst']+segm_match['length']-1, self._tcmp['submissions'][fn]['numberOfTokens']-1),
+                    original_segid=segm_match['id']
                 )
-                self._soln_atoms[sn] = marginal_atomize_match(
+                ss = SolutionSegment(
                     sn,
-                    self._soln_atoms[sn],
-                    new_atom
+                    soln_length=self._tcmp['submissions'][sn]['numberOfTokens'],
+                    start_token=segm_match['startOfSecond'],
+                    end_token=min(segm_match['startOfSecond']+segm_match['length']-1, self._tcmp['submissions'][sn]['numberOfTokens']-1),
+                    original_segid=segm_match['id']
                 )
+                if max(fs.length, ss.length) > np.ceil(1.5 * min(fs.length, ss.length)):
+                    print(f'\tJPLAG_SKIPPING match ({fn},{sn}) due to length mismatch',max(fs.length, ss.length),'> 1.5*',min(fs.length, ss.length))
+                    continue
+                elif fs.length != ss.length:
+                    print(f'\tJPLAG_SKIPPING match ({fn},{sn}) because adjusted lens mismatch',fs.length,ss.length)
+                    continue
+                new_atom = MatchAtom(entries=[fs, ss])
+                # print(new_atom)
+                self._soln_atoms[fn] = marginal_atomize_match( fn, self._soln_atoms[fn], new_atom )
+                self._soln_atoms[sn] = marginal_atomize_match( sn, self._soln_atoms[sn], new_atom )
                 for atm in self._soln_atoms[fn] + self._soln_atoms[sn]:
                     atm.update_metadata(ttrace, self._tcmp)
                 affected_soln_ids = affected_soln_ids.union({fn, sn})
         
         return list(affected_soln_ids)
 
-
-
-    def persp_idea_segment_extraction(self, persp_id, ttrace, engine, exclude_template=True, min_token_len=7, min_members=4, ce_cutoff=0.90, soln_filter=None, cached_embeddings=None):
+    def persp_idea_segment_extraction(self, persp_id, ttrace, engine, exclude_template=True, min_token_len=7, min_members=2, ce_cutoff=0.95, soln_filter=None, cached_embeddings=None):
         if cached_embeddings is None:
             cached_embeddings=dict()
         
@@ -451,7 +535,7 @@ class IdeaExtractorCache:
             ## filter atom down to own matches at least 95% codemb with node_idx
             seg_atom = codeemb_filter_atom(persp_id, seg_atom, ttrace, tcmp, cutoff=ce_cutoff, cached_embeddings=cached_embeddings)
             if len(seg_atom.solution_members()) < min_members:
-                print(f'\tcode emb filter drops {len(seg_atom.solution_members())} members below {min_members}')
+                print(f'\tcode emb filter ({ce_cutoff}) drops {len(seg_atom.solution_members())} members below {min_members}')
                 continue
 
             ## we now believe this is worth scraping. Use the engine to scrape out meaningful semantic clusters
@@ -459,11 +543,15 @@ class IdeaExtractorCache:
             for cluster_mems, cluster_desc in distilled_clusters.entries.items():
                 
                 if len(cluster_mems) < 2: # I think at this point I would believe any claims of matching pairs.
+                    print(f'\tsemantic filter splits cluster below threshold[{cluster_mems}:"{cluster_desc}"]')
                     continue
                 
                 # we are now finally satisfied with the overlapping sequences being meaningfully similar. append to results list
-                print('\tcluster identified')
-                seg_atoms.append(seg_atom.filter_solutions(cluster_mems, reset_cache=False).set_description(cluster_desc))
+                print('\tcluster identified @',f'{persp_id}:{seg_atom.get(persp_id).start_token}-{seg_atom.get(persp_id).end_token}')
+
+                seg_atoms.append(
+                    seg_atom.filter_solutions(cluster_mems, reset_cache=False).set_description(cluster_desc).update_line_numbers(ttrace, self._tcmp)
+                )
         return seg_atoms
 
 

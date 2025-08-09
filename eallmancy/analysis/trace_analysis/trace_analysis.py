@@ -125,6 +125,23 @@ class TraceAnalysis:
     def distilled_ideas(self):
         return self.idea_extractor_cache._idea_reflections
 
+    def distilled_dist(self, a_idx, b_idx):
+        # find ideas overlap
+        ab_atoms = [
+            ide.originating_atom for ide in self.distilled_ideas.values()
+            if ide.originating_atom.solution_members().intersection({a_idx, b_idx}) == {a_idx, b_idx}
+        ]
+        a_tokenlen = self.idea_extractor_cache._tcmp['submissions'][a_idx]['numberOfTokens']
+        b_tokenlen = self.idea_extractor_cache._tcmp['submissions'][b_idx]['numberOfTokens']
+        hasmatch_memo = np.zeros((a_tokenlen,))
+
+        for ide in ab_atoms:
+            ide_segm = ide.get(a_idx)
+            hasmatch_memo[ide_segm.start_token:ide_segm.end_token+1] = 1
+        
+        return hasmatch_memo.sum() * (0.5 / a_tokenlen + 0.5 / b_tokenlen)
+
+
     def hook(self, ttrace):
         ## THIS IS WHAT WE WILL GET EVERY TIME A TRACE UPDATES
         new_art = ttrace.list[-1]
