@@ -42,7 +42,7 @@ class JPlagApiHandler:
         connection_attempts = 0
         while connection_attempts < self._max_startup_wait:
             try:
-                resp = requests.get('http://localhost:8080')
+                resp = requests.get(f'http://localhost:{self.port}')
                 break
             except requests.ConnectionError as ce:
                 connection_attempts += 1
