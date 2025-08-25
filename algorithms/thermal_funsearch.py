@@ -72,15 +72,13 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
 
 
 
-def activation_v1(x, ctmp, eps=1e-3, xstar=0.9):
+def activation_v1(x, ctmp, eps=1e-3, xstar=0.9, tmax=1.5):
     if ctmp == 0:
         return 1.
     elif x >= xstar:
         return 1.
 
-    tmax = 1.5
-    L = tmax / max(ctmp, eps)
-    
+    L = tmax / max(ctmp, eps)    
     return L*(1 - x/xstar) + x/xstar
 
 
@@ -115,6 +113,40 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
     # temperature KWARG should be passed via context manager into the LLM handling
     return engine.generate_artifact(base, SinglePartSolution, parents=isle_examples, temperature=custom_temp)
 
+
+
+
+def generate_islespawn_thermaldespair(trace, *isle_examples):
+    base = f'''{engine._problem_spec.description}
+Previous implementations, from *worst to best*
+'''
+    base += '\n'.join(list(map(str, sorted(isle_examples, key=lambda sln: sln.fitness-1*(-1+2*engine._problem_spec.maximization), reverse=True))))
+    base += f'''
+Please assist in writing a next version of the algorithm with the same function signature:
+```python
+{engine._problem_spec.template}
+```
+Enclose within a code block like ```python ... ```. Do not give additional explanations.
+'''
+
+    # big brain time. calculate discounted temperature based hacky activation
+    og_temp = engine._sampler._llm.kwargs.get('temperature', 1.)
+
+    parent_fitnesses = [ie.fitness for ie in isle_examples]
+    avg_parent_fitness = sum(parent_fitnesses) / len(isle_examples)
+    curr_tidx = max([a.trace_id for a in trace.list])
+    prev_solns = [a for a in trace.list[:]]
+    _m = 1 if engine._problem_spec.maximization else -1
+    M = avg_fit_pct = 1 - (len([a for a in trace.list if a.is_solution and a.fitness*_m > avg_parent_fitness*_m]) / len([a for a in trace.list if a.is_solution]))
+
+
+    act = activation_v1(M, og_temp)
+    activation_v1()
+    custom_temp = act * og_temp
+    # print('par_pct', M,'\tact',act,'\ttemp',custom_temp)
+
+    # temperature KWARG should be passed via context manager into the LLM handling
+    return engine.generate_artifact(base, SinglePartSolution, parents=isle_examples, temperature=custom_temp)
 
 
 
