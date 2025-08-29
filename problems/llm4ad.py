@@ -19,7 +19,7 @@ _id = lambda f: f
 
 class OBPProblemSpec(ProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = _id if not maximization else _swap_max_min
+        _signflips = _id if maximization else _swap_max_min
         tt = OBPEvaluation()
         super().__init__(
             description=tt.task_description,
@@ -43,7 +43,7 @@ class TSPProblemSpec(ProblemSpec):
 
 class JSSPProblemSpec(ProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = _id if not maximization else _swap_max_min
+        _signflips = _id if maximization else _swap_max_min
         tt = JSSPEvaluation()
         super().__init__(
             description=tt.task_description,
@@ -55,7 +55,7 @@ class JSSPProblemSpec(ProblemSpec):
 
 class CVRPProblemSpec(ProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = _id if not maximization else _swap_max_min
+        _signflips = _id if maximization else _swap_max_min
         tt = CVRPEvaluation()
         super().__init__(
             description=tt.task_description,
@@ -67,7 +67,7 @@ class CVRPProblemSpec(ProblemSpec):
 
 class KnapsackProblemSpec(ProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = _id if not maximization else _swap_max_min
+        _signflips = _id if maximization else _swap_max_min
         tt = KnapsackEvaluation()
         super().__init__(
             description=tt.task_description,
@@ -155,7 +155,7 @@ class BactGrowProblemSpec(ProblemSpec):
 
 class AdmissibleSetProblemSpec(ProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = _id if not maximization else _swap_max_min
+        _signflips = _id if maximization else _swap_max_min
         tt = ASPEvaluation()
         super().__init__(
             description=tt.task_description,
