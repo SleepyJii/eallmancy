@@ -65,7 +65,7 @@ def initial_solution(engine) -> SinglePartSolution:
 You are an expert in the domain of optimization heuristics. Your task is to design heuristics that can effectively solve optimization problems.
 Your response outputs Python code and nothing else. Format your code as a Python code string: "```python ... ```".
 
-Write a {engine._problem_spec.entrypoint} function for {engine._problem_spec.description}
+Write a {engine._problem_spec.entrypoint} function for {engine._problem_spec.setting_description}
 {engine._problem_spec.func_description}
 
 {engine._problem_spec.template}
@@ -91,7 +91,7 @@ def comparative_reflection(engine, parenta: SinglePartSolution, parentb: SingleP
     pmpt = f"""
 You are an expert in the domain of optimization heuristics. Your task is to design heuristics that can effectively solve optimization problems.
 
-Below are two `{engine._problem_spec.entrypoint}` functions for {engine._problem_spec.description}
+Below are two `{engine._problem_spec.entrypoint}` functions for {engine._problem_spec.setting_description}
 {engine._problem_spec.func_description}
 
 You are provided with two code versions below, where the second version performs better than the first one.
@@ -123,7 +123,7 @@ def crossover_solution(engine, parenta: SinglePartSolution, parentb: SinglePartS
 You are an expert in the domain of optimization heuristics. Your task is to design heuristics that can effectively solve optimization problems.
 Your response outputs Python code and nothing else. Format your code as a Python code string: "```python ... ```".
 
-Write a {engine._problem_spec.entrypoint} function for {engine._problem_spec.description}
+Write a {engine._problem_spec.entrypoint} function for {engine._problem_spec.setting_description}
 {engine._problem_spec.func_description}
 
 [Worse code]
@@ -152,7 +152,7 @@ def longterm_reflection(engine, prev_longterm_refl: LongTermReflection, st_refls
     pmpt = f"""
 You are an expert in the domain of optimization heuristics. Your task is to design heuristics that can effectively solve optimization problems.
 
-Below is your prior long-term reflection on designing heuristics for {engine._problem_spec.description}
+Below is your prior long-term reflection on designing heuristics for {engine._problem_spec.setting_description}
 {prev_longterm_refl}
 
 Below are some newly gained insights.
@@ -173,7 +173,7 @@ def elite_mutated_solution(engine, longterm_refl: LongTermReflection, elite_soln
 You are an expert in the domain of optimization heuristics. Your task is to design heuristics that can effectively solve optimization problems.
 Your response outputs Python code and nothing else. Format your code as a Python code string: "```python ... ```".
 
-Write a {engine._problem_spec.entrypoint} function for {engine._problem_spec.description}
+Write a {engine._problem_spec.entrypoint} function for {engine._problem_spec.setting_description}
 {engine._problem_spec.func_description}
 
 [Prior reflection]
