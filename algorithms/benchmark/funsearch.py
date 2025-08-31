@@ -28,7 +28,7 @@ engine = EngineV3(
 def generate_initial():
     base =  f"""
 {engine._problem_spec.description}
-Implement the following Python function:
+Implement a solution Python function with the same function signature as below:
 ```python
 {engine._problem_spec.template}
 ```
@@ -43,11 +43,11 @@ Previous implementations, from *worst to best*
 '''
     base += '\n'.join(list(map(str, sorted(isle_examples, key=lambda sln: sln.fitness-1*(-1+2*engine._problem_spec.maximization), reverse=True))))
     base += f'''
-Please assist in writing a next version of the algorithm with the same function signature:
+Please assist in writing a new version of the algorithm with the same function signature as below:
 ```python
 {engine._problem_spec.template}
 ```
-Enclose within a code block like ```python ... ```. Do not give additional explanations.
+Do not give an exact copy of the provided implementations. Enclose within a code block like ```python ... ```. Do not give additional explanations.
 '''
     return engine.generate_artifact(base, SinglePartSolution, parents=isle_examples)
 
@@ -129,8 +129,9 @@ class FunIsland:
         )
         return np.random.choice(
             all_solns,
-            size=min(self.funcs_per_prompt, len(self._clusters)),
-            p=all_soln_probs
+            size=min(len(all_solns), self.funcs_per_prompt, len(self._clusters)),
+            p=all_soln_probs,
+            replace=False
         )
 
 
