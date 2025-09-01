@@ -125,11 +125,11 @@ class FunIsland:
 
         all_solns = list(chain(*[mems for kv, mems in self._clusters.items()]))
         all_soln_probs = np.concatenate(
-            [c_pr * cm_pr for c_pr, cm_pr in zip(cluster_probs, cluster_mem_probs)]
+            [c_pr * cm_pr + 1e-3 for c_pr, cm_pr in zip(cluster_probs, cluster_mem_probs)]
         )
         return np.random.choice(
             all_solns,
-            size=min(len(all_solns), self.funcs_per_prompt, len(self._clusters)),
+            size=min(len(all_soln_probs), len(all_solns), self.funcs_per_prompt, len(self._clusters)),
             p=all_soln_probs,
             replace=False
         )
