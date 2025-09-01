@@ -127,6 +127,7 @@ class FunIsland:
         all_soln_probs = np.concatenate(
             [c_pr * cm_pr + 1e-3 for c_pr, cm_pr in zip(cluster_probs, cluster_mem_probs)]
         )
+        all_soln_probs /= all_soln_probs.sum()
         return np.random.choice(
             all_solns,
             size=min(len(all_soln_probs), len(all_solns), self.funcs_per_prompt, len(self._clusters)),
