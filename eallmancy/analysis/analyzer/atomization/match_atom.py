@@ -35,7 +35,7 @@ class MatchAtom:
 
     def __hash__(self):
         # specifically not including original_segid, because I want to prefer pre-existing None
-        return hash(frozenset({e.__hash__() for e in self.entries}))
+        return hash(frozenset({e.__hash__() for e in sorted(self.entries, key=lambda e: e.soln_id)}))
 
     def __eq__(self, oth):
         return self.__hash__() == oth.__hash__()
