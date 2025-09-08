@@ -13,9 +13,7 @@ from fastapi import APIRouter, Path, Body, HTTPException, WebSocket, WebSocketDi
 from pydantic import BaseModel
 from pathlib import Path
 from typing import Optional
-from base.config import Config
 # from backend.eallmancer import Eallmancer
-from backend.eallmancer_v2 import Eallmancer
 
 import signal
 import sys
@@ -25,6 +23,7 @@ import networkx as nx
 import numpy as np
 import asyncio
 
+from backend.eallmancer_v2 import Eallmancer
 from backend.websocket_manager import ConnectionManager
 from backend.msg_worker import msg_worker, _get_timestamps
 

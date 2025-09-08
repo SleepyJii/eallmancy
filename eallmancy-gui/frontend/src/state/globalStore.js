@@ -23,24 +23,18 @@ export const useGlobalStore = create((setState, getState) => ({
     },
     trace: {
       timestamp: 0,
-      graph: {'nodes': [], 'edges': []}
+      graph: {'nodes': [], 'edges': []},
+      analysis: {'segment': null, 'pairwise': null},
     },
     ui: {
       selected_node_id: -1,
+      selected_segm_id: 'ALL',
       min_fitness: 0,
       max_fitness: 0,
       selected_algo_type: 'GitDiff',
-      selected_config_tab: 'Problem'
+      selected_config_tab: 'Problem',
+      analysis_mode: false,
     },
-    // config: {
-    //   repoPath: '/root/testevolve',
-    //   evalScript: '/root/testevolve/poetry_ex/eval.py',
-    //   description: 'Write a mysterious poem about apples',
-    //   algorithm: null,
-    //   overwrite: false,
-    //   algos: [],
-    //   timestamp: 0,
-    // },
     config: {
       algo: {
         settings: initialAlgoSettings
@@ -76,6 +70,28 @@ export const useGlobalStore = create((setState, getState) => ({
       timestamp: 0,
     }
   },
+  setSelectedSegmId: (val) => {
+    console.log('setting selected_segm_id to',val);
+    set((s) => ({ global: { ...s.global, ui: { ...s.global.ui, selected_segm_id: val } } }));
+  },
+
+  // NEW: set explicitly
+  setAnalysisMode: (on) =>
+    set((state) => ({
+      global: {
+        ...state.global,
+        ui: { ...state.global.ui, analysis_mode: true },
+      },
+    })),
+
+  // NEW: convenient toggle
+  toggleAnalysisMode: () =>
+    set((state) => ({
+      global: {
+        ...state.global,
+        ui: { ...state.global.ui, analysis_mode: !(state.global.ui.analysis_mode ?? false) },
+      },
+    })),
 
 
   setField: (path, value) => {

@@ -1,6 +1,5 @@
 // websocketManager.js
 import { useGlobalStore } from '../state/globalStore';
-import { useConfigStore } from '../state/configStore';
 import { useEffect, useRef } from 'react';
 
 // dynamically point at host WebSocket endpoint

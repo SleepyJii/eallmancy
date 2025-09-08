@@ -1,7 +1,7 @@
 
 from typing import Optional
 import os
-from base.config import Config
+# from base.config import Config
 from eallmancy.engine.engine_trace import EngineTrace
 from backend.eoh_git_algorithm import EohGitAlgorithm
 from eallmancy.engine.evolve_git_spec import EvolveGitSpec
@@ -10,6 +10,17 @@ from datetime import datetime
 from backend.eallm_state import SharedState
 
 import asyncio
+
+
+
+class Config(BaseModel):
+    repoPath: str
+    evalScript: str
+    description: str
+    algorithm: str
+    overwrite: bool
+    
+
 
 class Eallmancer:
     def __init__(self, serv_msg_q):
