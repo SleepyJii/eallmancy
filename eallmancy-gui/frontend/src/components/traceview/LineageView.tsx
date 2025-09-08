@@ -39,7 +39,7 @@ function interpolateColor(c1, c2, t) {
   ];
 }
 
-function getFitnessColor(value, value_rank, min, max) {
+function getSolutionFitnessColor(value, value_rank, min, max) {
   const v = parseFloat(value_rank);
   if (isNaN(parseFloat(value))) return '#000';
 
@@ -67,7 +67,65 @@ function getFitnessColor(value, value_rank, min, max) {
 
 
 
+
 export const GLOW_COLOR = '#111'; // or any color you want
+
+
+function DiamondNode({ data, selected }) {
+  const global = useGlobalStore(state => state.global);
+  const selectedNodeId = useGlobalStore(state => state.global.ui.selected_node_id);
+  const isSelected = selectedNodeId == data.id;
+
+  const color = `rgba(49, 49, 49, 1)`;
+
+  // Scale down 30%
+  const OUTER_BOX = Math.round(20 * 0.7);        // 14px visible footprint
+  // A square rotated 45° expands by √2, so shrink its side to keep it inside the box.
+  const RING_SIDE = Math.round(OUTER_BOX / Math.SQRT2); // ~10px
+  const NODE_SIDE = Math.round(RING_SIDE * 0.7);        // inner fill (~7px) for nice padding
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width: OUTER_BOX,
+        height: OUTER_BOX,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {isSelected && (
+        <div
+          style={{
+            position: 'absolute',
+            width: RING_SIDE,
+            height: RING_SIDE,
+            transform: 'rotate(45deg)',
+            border: `2px solid ${GLOW_COLOR}`,
+            boxSizing: 'border-box',
+          }}
+        />
+      )}
+
+      <div
+        style={{
+          width: NODE_SIDE,
+          height: NODE_SIDE,
+          backgroundColor: color,
+          transform: 'rotate(45deg)',
+          position: 'relative',
+        }}
+      >
+        {/* Keep handles aligned to the unrotated node's top/bottom positions */}
+        <Handle type="source" position={Position.Bottom} style={{ opacity: 0, pointerEvents: 'none' }} />
+        <Handle type="target" position={Position.Top} style={{ opacity: 0, pointerEvents: 'none' }} />
+      </div>
+    </div>
+  );
+}
+
+
 
 
 function DotNode({ data, selected }) {
@@ -78,7 +136,8 @@ function DotNode({ data, selected }) {
   const minFitness = useGlobalStore(state => state.global.ui.min_fitness);
   const maxFitness = useGlobalStore(state => state.global.ui.max_fitness);
 
-  const color = getFitnessColor(data.evaluation.fitness, data.evaluation.fitness_rank, minFitness, maxFitness);
+  const color = getSolutionFitnessColor(data.evaluation.fitness, data.evaluation.fitness_rank, minFitness, maxFitness);
+  
 
   return (
     <div
@@ -155,6 +214,7 @@ const edgeTypes = {
 
 const nodeTypes = {
   dot: DotNode,
+  diamond: DiamondNode, // TODO: actually implement the small diamond one for non-solutions
 };
 
 
@@ -171,34 +231,18 @@ export default function LineageView() {
 
 
   const traceGraph = useGlobalStore(state => state.global.trace.graph);
-  const defaultNodeProps = {
+  const solutionNodeProps = {
     sourcePosition: Position.Bottom,
     targetPosition: Position.Top,
     type: 'dot',
   };
+  const artifactNodeProps = {
+    sourcePosition: Position.Bottom,
+    targetPosition: Position.Top,
+    type: 'diamond',
+  };
 
 
-
-  // const nodes = useMemo(() => {
-  //   return traceGraph.nodes.map(node => ({
-  //     ...node,
-  //     position: {
-  //       x: node.position.x_rank * 50 + 50,
-  //       y: node.position.y_rank * 50 + 50,
-  //     },
-  //     data: node,
-  //     ...defaultNodeProps,
-  //   }));
-  // }, [traceTimestamp]);
-
-  // const edges = useMemo(() => {
-  //   return traceGraph.edges.map((edge, i) => ({
-  //     id: `e${i}`,
-  //     source: edge.source,
-  //     target: edge.target,
-  //     type: 'smooth',
-  //   }));
-  // }, [traceTimestamp]);
 
 
   const layoutedGraph = useMemo(() => {
@@ -225,7 +269,7 @@ export default function LineageView() {
           y: pos.y - 10,
         },
         data: node,
-        ...defaultNodeProps,
+        ...(node.is_solution ? solutionNodeProps : artifactNodeProps),
       };
     });
 
@@ -246,7 +290,7 @@ export default function LineageView() {
     const nodes = useGlobalStore.getState().global.trace.graph.nodes;
     if (!nodes || nodes.length === 0) return;
     const fitnessValues = nodes
-      .map(n => parseFloat(n.evaluation.fitness_rank))
+      .map(n => n.is_solution ? parseFloat(n.evaluation.fitness_rank) : NaN )
       .filter(val => !isNaN(val));
 
     if (fitnessValues.length > 0) {

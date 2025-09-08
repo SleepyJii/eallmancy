@@ -1,6 +1,5 @@
 // src/components/controlpanel/GitProblemPanel.jsx
 import { useState, useEffect, useRef } from 'react';
-import { useConfigStore } from '../../state/configStore';
 import { useGlobalStore } from '../../state/globalStore';
 
 import { submitConfig, askAlgos } from '../../connection/SocketManager';

@@ -3,8 +3,62 @@
 
 import { Link } from 'react-router-dom';
 import { useGlobalStore } from '../state/globalStore';
-import { useConfigStore } from '../state/configStore';
 import { startEvolution, askTimestamps, stopEvolution } from '../connection/SocketManager';
+
+
+
+
+function AnalysisSwitch({ checked, onChange }) {
+  return (
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        marginLeft: '20px',
+        userSelect: 'none',
+        cursor: 'pointer',
+        fontSize: '0.95em',
+      }}
+    >
+      Analysis Mode
+      {/* Visually hidden checkbox for a11y and reliable toggling */}
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+      />
+      <span
+        aria-hidden="true"
+        style={{
+          position: 'relative',
+          width: '46px',
+          height: '24px',
+          borderRadius: '999px',
+          background: checked ? '#044bbd' : '#aaa',
+          transition: 'background 150ms',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            top: '3px',
+            left: checked ? '24px' : '3px',
+            width: '18px',
+            height: '18px',
+            borderRadius: '50%',
+            background: '#fff',
+            transition: 'left 150ms',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+          }}
+        />
+      </span>
+    </label>
+  );
+}
+
+
 
 
 function EngineIndicator({ status }) {
@@ -99,6 +153,15 @@ export default function Banner() {
   const config = useGlobalStore(state => state.global.config);
   const configTime = config.timestamp;
 
+  const analysisMode = useGlobalStore((state) => state.global.ui?.analysis_mode ?? false);
+  // const toggleAnalysisMode = useGlobalStore((state) => state.toggleAnalysisMode);
+
+  const toggleAnalysisMode = () => {
+    const state = useGlobalStore.getState();
+    console.log('switching analysis_mode to ',!state.global.ui.analysis_mode);
+    state.setField(`global.ui.analysis_mode`, !state.global.ui.analysis_mode);
+  };
+  
 
   const handleStart = () => {
     startEvolution();
@@ -132,6 +195,7 @@ export default function Banner() {
       }}>
         <BannerButton label="START" enabled={isReady} onClick={handleStart} />
         <BannerButton label="STOP" enabled={isRunning} onClick={handleStop} />
+        <AnalysisSwitch checked={analysisMode} onChange={toggleAnalysisMode} />
         <EngineIndicator status={global.status} />
         <TraceIndicator  status={global.status} configTime={configTime} traceTime={traceTime} traceNodes={traceNodes}/>
         <BannerButton label="refresh" enabled={true} onClick={askTimestamps} />
