@@ -21,6 +21,9 @@ from eallmancy.analysis.analyzer.atomization import MatchAtom, SolutionSegment, 
 from eallmancy.analysis.analyzer.segmentation import distinct_subsegments
 
 
+def _GET_SEGM_ST(sgm):
+    return sgm.start_token
+
 @dataclass
 class SparseProgramTemplate:
     atoms: Set[MatchAtom]
@@ -34,14 +37,27 @@ class SparseProgramTemplate:
             raise Exception("attempted to create empty SparseProgramTemplate")
 
     def token_length(self):
-        return min(map(lambda atm: atm.token_length(), self.atoms))
+        mems = self.solution_members()
+        persp_id = list(mems)[0] # doesnt matter which
+        arr_end = max([atm.get(persp_id).start_token + atm.get(persp_id).length for atm in self.atoms])
+        tkns = np.zeros((arr_end,))
+        for atm in self.atoms:
+            sgm = atm.get(persp_id)
+            tkns[sgm.start_token:sgm.end_token+1] = 1
+        return int(tkns.sum())
+        # return min([atm.token_length() for atm in self.atoms])
     
     def solution_members(self):
         return list(self.atoms)[0].solution_members()
     
     def get(self, soln_idx):
-        return list(sorted([a.get(soln_idx) for a in atoms], key=lambda sgm: sgm.start_token))
+        return list(sorted([a.get(soln_idx) for a in self.atoms], key=_GET_SEGM_ST))
 
+def _ID2LIST():
+    return []
+
+def _ID2SET():
+    return set()
 
 def re_extract(ptrn, sstr, typecast=str):
     sres = re.findall(ptrn, sstr)
@@ -155,13 +171,16 @@ class SegmentTraceAnalysis:
     def glommed_reclustered_atms(self, _atoms, min_token_len=7, min_members=3, ce_cutoff=0.95):
         
         # THIS IS THE FINAL TARGET
-        seg_atoms = defaultdict(lambda : [])
+        seg_atoms = defaultdict(_ID2LIST)
 
         for arte in self._trace.list:
             if not arte.is_solution:
                 continue
             persp_id = arte.trace_id
             if self.verbose: print(f'[{persp_id}] CHECKING ATOMS')
+            if persp_id in self._invalid_solns:
+                if self.verbose: print(f'\tskipping invalid soln')
+                continue
 
             # for batch calling code emb
             to_embcheck_atms = []
@@ -236,7 +255,7 @@ class SegmentTraceAnalysis:
         return seg_atoms
 
     def collect_atomic_templates(self):
-        uniq_membersets = defaultdict(lambda : set())
+        uniq_membersets = defaultdict(_ID2SET)
         for k, atms in self._atoms.items():
             if atms == []:
                 continue
@@ -245,7 +264,7 @@ class SegmentTraceAnalysis:
                 uniq_membersets[mms] = uniq_membersets[mms].union({atm})
         
         _templates = [SparseProgramTemplate(atmls) for atmls in uniq_membersets.values()]
-        soln_templates = defaultdict(lambda : [])
+        soln_templates = defaultdict(_ID2LIST)
         for tt in _templates:
             for s in tt.solution_members():
                 soln_templates[s].append(tt)
@@ -270,3 +289,22 @@ class SegmentTraceAnalysis:
             ce_cutoff=emb_cutoff
         )
         self.templates, self.soln_templates = self.collect_atomic_templates()
+
+
+    def save(self, path):
+        # no idea why this is necessary, but..
+        _lk = self._trace.lock
+        self._trace.lock = None
+        try:
+            pickleable_repr = (self._trace, self._tcmp, self._invalid_solns, self.verbose, self._atoms, self.templates, self.soln_templates)
+            with open(path, 'wb') as f:
+                pk.dump(path, f)
+        except Exception as e:
+            print(f'Failed to save SegmentAnalysis, {e}')
+        self._trace.lock = _lk
+
+#    def load(self, path);
+#        with open(path, 'rb') as f:
+#            self._trace, self._tcmp, self._invalid_solns, self.verbose, self._atoms, self.templates, self.soln_templates = 
+
+

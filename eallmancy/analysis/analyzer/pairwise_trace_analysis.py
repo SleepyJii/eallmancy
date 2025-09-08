@@ -53,10 +53,15 @@ class PairwiseTraceAnalysis:
         self._invalid_solns=invalid_solns
 
     def distance(self, solna, solnb, emb_mode='weight'):
-        if solna.trace_id in self._invalid_solns or solnb.trace_id in self._invalid_solns:
-            return 1.0  # programs too short to compare are considered nonmatching
+        if solna.trace_id == solnb.trace_id:
+            return 0.0
+
         if (min(solna.trace_id, solnb.trace_id),max(solna.trace_id, solnb.trace_id)) not in self._tcmp['comparisons']:
             return 1.0  # idk why these arent here
+
+        if (solna.trace_id in self._invalid_solns) and (solnb.trace_id in self._invalid_solns):
+            # SPECIAL SUBROUTINE - DIRECT COSINE SIMILARITY
+            return 1.0  # programs too short to compare are considered nonmatching
 
         cutoff_thresh = re_extract(r'cutoff\(([0-9,\.]+)\)', emb_mode, typecast=float)
 

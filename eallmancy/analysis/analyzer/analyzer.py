@@ -135,6 +135,32 @@ class Analyzer:
 
         return tcmp
 
+    @classmethod
+    def _add_fallback_similarities_batched(cls, trace, tcmp, invalid_solns):
+        # we want every 
+        to_run = [(a, grab_programbody(trace[a].program)) for a in invalid_solns]
+        embs = dict()
+
+        batch_size=300
+        for b_start in range(0, len(to_run), batch_size):
+            batch_runs = to_run[b_start:min(b_start+batch_size, len(to_run))]
+            all_embds = get_openai_embeddings([prg for _, prg in batch_runs])
+            print(f'recv batch {b_start}-{b_start+len(batch_runs)}')
+            for (k,_), emb in zip(batch_runs, all_embds):
+                embs[k] = emb
+        
+        aaa = list(sorted(invalid_solns))
+        dsts = dict()
+        for a_idx, a in enumerate(aaa[:-1]):
+            for b in aaa[a_idx+1:]:
+                dsts[(a,b)] = cosine_sim(all_embds[a], all_embds[b])
+
+        return dict(
+            submissions=tcmp['submissions'],
+            comparisons=tcmp['comparisons'],
+            fallbacks=dsts
+        )
+
 
     @classmethod
     def build_pairwise_analysis(cls, trace, ps):
@@ -160,6 +186,7 @@ class Analyzer:
             _tcmp = Analyzer._cleanup_matches(trace, _tcmp)
             # now we diverge a bit. we want to calculate cosine similarity per comparison.
             self._tcmp = Analyzer._add_match_similarities_batched(trace, _tcmp)
+            self._tcmp = Analyzer._add_fallback_similarities(trace, _tcmp, invalid_solns)
             self._invalid_solns=invalid_solns
         else:
             self._tcmp = cached_tcmp

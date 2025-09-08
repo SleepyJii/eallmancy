@@ -4,7 +4,8 @@ import itertools
 
 from eallmancy.artifacts.artifact import Artifact
 from eallmancy.evaluation.evaluation import Evaluation
-from eallmancy.analysis.trace_analysis import TraceAnalysis
+from eallmancy.analysis.analysis_cache import AnalysisCache
+# from eallmancy.analysis.trace_analysis import TraceAnalysis
 from dataclasses import dataclass
 from typing import Dict, List
 from pathlib import Path
@@ -29,14 +30,15 @@ class StaticProblemSpec:
 
 
 class EngineTrace:
-    def __init__(self, problem_spec=None, trace_analysis=False, **kwargs):
+    def __init__(self, problem_spec=None, **kwargs):
         self._id_generator = itertools.count()
         self.problem_spec = problem_spec if problem_spec is None else StaticProblemSpec.from_problem_spec(problem_spec)
         self.trace_graph = nx.DiGraph()
         self.trace_list = []
         self.lock = Lock()
 
-        self.trace_analysis = None if not trace_analysis else TraceAnalysis(ps=self.problem_spec, **kwargs)
+        self.analysis_cache = AnalysisCache()
+        # self.trace_analysis = None if not trace_analysis else TraceAnalysis(ps=self.problem_spec, **kwargs)
 
     @property
     def graph(self):
@@ -80,13 +82,18 @@ class EngineTrace:
     def save(self, path):
         self.lock = None # lock is unpickleable
         Path(path).parent.mkdir(exist_ok=True, parents=True)
+        if self.analysis_cache.segment is not None:
+            self.analysis_cache.segment._trace = None
         with open(path, 'wb') as f:
             pk.dump(self, f)
+        self.analysis_cache.segment._trace = self
 
     @staticmethod
     def load(path):
         with open(path, 'rb') as f:
             trace: EngineTrace = pk.load(f)
         trace.lock = Lock()
+        if trace.analysis_cache.segment is not None:
+            trace.analysis_cache.segment = trace
         return trace
 
