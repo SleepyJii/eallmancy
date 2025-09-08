@@ -1,13 +1,15 @@
 
-## PROMPT-TO-SOLUTION ENGINE
-### uses api information and problem details for easy prompt evaluation
-
 from eallmancy.engine.llm_solution_engine_v3 import EngineV3
 from eallmancy import Artifact
 
 from eallmancy import SinglePartSolution, ProblemSpec
 import os
 import re
+import numpy as np
+import math
+from typing import List
+from threading import Lock, Thread
+
 
 OPENAI_API_SPEC = dict(
         host="api.openai.com",
@@ -20,8 +22,6 @@ engine = EngineV3(
     api_spec=OPENAI_API_SPEC,
     problem_spec=None
 )
-
-
 
 class ThoughtfulSolution(SinglePartSolution):
     def __init__(self, response: str, *args, **kwargs):
@@ -42,13 +42,8 @@ class ThoughtfulSolution(SinglePartSolution):
 ```
 {eval_str}
 """
-    
-
-
        
 # prompt_to_thoughtful_solution = engine.prompt_to_solution.artifact(ThoughtfulSolution)
-
-## PROMPT->SOLUTION OPERATIONS
 
 def i1_solution():
     prmpt = f'''{engine._problem_spec.description}
@@ -57,7 +52,6 @@ def i1_solution():
 {engine._problem_spec.template}
 Enclose within a code block like ```python ... ```. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulSolution)
-
 
 def e1_solution(*parent_solns):
     prmpt = f'''{engine._problem_spec.description}
@@ -70,7 +64,6 @@ Please help me create a new algorithm that has a totally different form from the
 Enclose within a code block like ```python ... ```. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulSolution, parents=parent_solns)
 
-
 def e2_solution(*parent_solns):
     prmpt = f'''{engine._problem_spec.description}
 I have {len(parent_solns)} existing algorithms with their codes as follows:
@@ -82,7 +75,6 @@ Please help me create a new algorithm that has a totally different form from the
 {engine._problem_spec.template}
 Enclosed within a code block like ```python ... ```. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulSolution, parents=parent_solns)
-
 
 def m1_solution(parent_soln):
     prmpt = f'''{engine._problem_spec.description}
@@ -97,7 +89,6 @@ Please assist me in creating a new algorithm that has a different form but can b
 Enclosed within a code block like ```python ... ```. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulSolution, parents=[parent_soln])
 
-
 def m2_solution(parent_soln):
     prmpt = f'''{engine._problem_spec.description}
 I have one algorithm with its code as follows. Algorithm description:
@@ -110,15 +101,6 @@ Please identify the main algorithm parameters and assist me in creating a new al
 {engine._problem_spec.template}
 Enclosed within a code block like ```python ... ```. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulSolution, parents=[parent_soln])
-
-
-## EOH MAIN LOOP
-
-import numpy as np
-import math
-from typing import List
-from threading import Lock, Thread
-
 
 
 class Population:
@@ -167,31 +149,6 @@ def _eoh_worker(population: Population, e1_per_gen=1 ,e2_per_gen=1, m1_per_gen=1
 
         population.n_generations += 1
         population.survival_filter()
-
-
-# def eoh(num_initial_samples=3, pop_size=5, max_samples=10, max_generations=10, problem_spec: ProblemSpec=None, n_workers=1, **kwargs) -> SinglePartSolution:
-
-#     # this syntactical sugar just lets you specify an optional new problemspec to eoh(..)
-#     # specifying the problem spec in the engine constructor is also sufficient
-#     with engine.set(problem_spec=problem_spec): 
-#         engine.start()
-
-#         population = Population(
-#             [i1_solution() for _ in range(num_initial_samples)],
-#             max_generations=max_generations,
-#             max_samples=max_samples,
-#             popsize=pop_size,
-#         )
-#         sampler_threads = [
-#             Thread(target=_eoh_worker, args=(population,), kwargs=kwargs)
-#             for _ in range(n_workers)
-#         ]
-#         for t in sampler_threads:
-#             t.start()
-#         for t in sampler_threads:
-#             t.join()
-
-#         return min(population.members, key=lambda f: f.fitness)
 
 
 def eoh(initial_size=5, pop_size=5, max_samples=10, max_generations=1e9, problem_spec: ProblemSpec=None, api_spec=OPENAI_API_SPEC, n_workers=1, **kwargs):
