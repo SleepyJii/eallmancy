@@ -4,29 +4,38 @@ import CodeViewer from './CodeViewer.tsx';
 import { colorForIndex } from '../../utils/colors';
 
 
-export const parseIntFromTag = (s?: string) =>
-  Number((s?.match(/-?\d+/) || [])[0]);
 
-/** Get all segmIds that actually have ranges for a given solution index. */
-export function segmIdsForAll(
-  templates: any,
-  solnIdx: number
-): number[] {
+
+export const parseIntFromTag = (v: unknown): number => {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const m = v.match(/-?\d+/);
+    if (m) return Number(m[0]);
+  }
+  return NaN;
+};
+
+
+export function segmIdsForAll(templates: any, solnIdx: number): number[] {
   if (!templates || !Number.isFinite(solnIdx)) return [];
   return Object.keys(templates)
     .map(Number)
     .filter((segmId) => {
       const bucket = templates[segmId];
-      // shapes supported:
-      // 1) bucket[solnIdx] -> [{start_line,end_line}, ...]
-      // 2) bucket[solnIdxStr]
-      // 3) bucket is already an array of ranges (no per-solution split)
       const ranges =
         bucket?.[solnIdx] ??
         bucket?.[String(solnIdx)] ??
         (Array.isArray(bucket) ? bucket : undefined);
       return Array.isArray(ranges) && ranges.length > 0;
     });
+}
+
+export function activeSegmIds(
+  templates: any,
+  solnIdx: number,
+  selected: number[]
+): number[] {
+  return selected && selected.length ? selected : [];
 }
 
 /** Decide which segmIds to highlight. Prefer templates; fall back to lookup. */
@@ -116,17 +125,39 @@ export function toLineGutterColors(ranges: ColoredRange[]): Map<number, string[]
 
 
 
+type Props = {
+  indices: number[];               // all available segmIds for current solution
+  selected: number[];              // currently active segmIds
+  onChange: (next: number[]) => void;
+  title?: string;
+  maxHeight?: number;
+};
 
 export function AnalysisColorButtons({
-  indices = [],
-  value = 'ALL',            // 'ALL' | number
-  onChange,                 // (next: 'ALL' | number) => void
+  indices,
+  selected,
+  onChange,
+  title = 'Segments',
   maxHeight = 140,
-  title = 'Indices',
-}) {
-  const isSelected = (item) => item === value;
+}: Props) {
+  const sel = new Set(selected);
 
-  const baseBtn = (selected) => ({
+  const toggle = (id: number) => {
+    const next = new Set(selected);
+    next.has(id) ? next.delete(id) : next.add(id);
+    console.log('setting selected to', Array.from(next).sort((a, b) => a - b));
+    onChange(Array.from(next).sort((a, b) => a - b));
+  };
+
+  const selectAll = () => {
+    console.log('setting selected to',[...indices].sort((a, b) => a - b));
+    onChange([...indices].sort((a, b) => a - b));
+  }
+  const selectNone = () => {
+    console.log('setting selected to',[]);
+    onChange([]);
+  }
+  const btnStyle = (active: boolean) => ({
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
@@ -134,9 +165,9 @@ export function AnalysisColorButtons({
     lineHeight: 1,
     padding: '4px 6px',
     borderRadius: 6,
-    border: selected ? '1px solid #6b7280' : '1px solid #d1d5db',
-    background: selected ? '#eef2ff' : '#ffffff',
-    cursor: onChange ? 'pointer' : 'default',
+    border: active ? '1px solid #6b7280' : '1px solid #d1d5db',
+    background: active ? '#eef2ff' : '#ffffff',
+    cursor: 'pointer',
     whiteSpace: 'nowrap',
   });
 
@@ -144,72 +175,50 @@ export function AnalysisColorButtons({
     <div>
       <div style={{ marginBottom: 6, fontSize: '0.9em', color: '#555' }}>{title}</div>
       <div
-        role="radiogroup"
+        role="group"
         style={{
           display: 'flex',
           flexWrap: 'wrap',
-          gap: '6px',
+          gap: 6,
           alignItems: 'center',
           maxHeight,
           overflow: 'auto',
-          padding: '4px',
+          padding: 4,
           border: '1px solid #ddd',
           borderRadius: 8,
           background: '#fafafa',
         }}
       >
-        {/* ALL button */}
-        <button
-          role="radio"
-          aria-checked={isSelected('ALL')}
-          onClick={() => onChange?.('ALL')}
-          title="All"
-          style={baseBtn(isSelected('ALL'))}
-        >
-          (ALL)
-        </button>
-        {/* NONE button */}
-        <button
-          role="radio"
-          aria-checked={isSelected(null)}
-          onClick={() => onChange?.(null)}
-          title="None"
-          style={baseBtn(isSelected(null))}
-        >
-          (NONE)
-        </button>
+        <button type="button" onClick={selectAll} style={btnStyle(false)}>(ALL)</button>
+        <button type="button" onClick={selectNone} style={btnStyle(selected.length === 0)}>(NONE)</button>
 
-        {/* Index buttons */}
         {indices.length === 0 ? (
           <div style={{ color: '#999', fontSize: 12 }}>No items</div>
         ) : (
-          indices.map((idx) => {
-            const selected = isSelected(idx);
-            return (
-              <button
-                key={idx}
-                role="radio"
-                aria-checked={selected}
-                onClick={() => onChange?.(idx)}
-                title={`Index ${idx}`}
-                style={baseBtn(selected)}
-              >
-                (<span style={{ fontVariantNumeric: 'tabular-nums' }}>{idx}</span>
-                <span
-                  aria-hidden
-                  style={{
-                    width: 12,
-                    height: 12,
-                    borderRadius: 2,
-                    background: colorForIndex(idx),
-                    border: '1px solid rgba(0,0,0,0.15)',
-                    display: 'inline-block',
-                  }}
-                />
-                )
-              </button>
-            );
-          })
+          indices.map((idx) => (
+            <button
+              key={idx}
+              type="button"
+              aria-pressed={sel.has(idx)}
+              onClick={() => toggle(idx)}
+              title={`Segment ${idx}`}
+              style={btnStyle(sel.has(idx))}
+            >
+              (<span style={{ fontVariantNumeric: 'tabular-nums' }}>{idx}</span>
+              <span
+                aria-hidden
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: 2,
+                  background: colorForIndex(idx),
+                  border: '1px solid rgba(0,0,0,0.15)',
+                  display: 'inline-block',
+                }}
+              />
+              )
+            </button>
+          ))
         )}
       </div>
     </div>
@@ -217,47 +226,43 @@ export function AnalysisColorButtons({
 }
 
 
+
 export default function NodeInspector() {
-  const global = useGlobalStore(state => state.global);
+  const global = useGlobalStore((s) => s.global);
+  const setSelectedSegms = useGlobalStore((s) => s.setSelectedSegms); // add this setter
+  const selectedSegms = global.ui?.selected_segms;              // number[]
+  console.log('SELECTED SEGMENTS',selectedSegms);
+
   const selectedId = global.ui.selected_node_id;
-
-  const selectedNode = useMemo(() => {
-    return global.trace.graph.nodes.find(n => n.id === selectedId);
-  }, [selectedId, global.trace.graph.nodes]);
-
-  const analysisMode = useGlobalStore((state) => state.global.ui?.analysis_mode ?? false);
-  const setSelectedSegmId = useGlobalStore(state => state.setSelectedSegmId);
-
-
-  // inputs you already have
-  const templates   = global?.trace?.analysis?.segment?.templates;
-  const soln_lookup = global?.trace?.analysis?.segment?.soln_lookup;
-  const selectedTag = selectedId;                       // e.g. "A7"
-  const selectedSeg = global?.ui?.selected_segm_id;     // 'ALL' | number
-  console.log('read hacky state');
-
-  var segmIds, ranges;
-
-  const [lineMap, gutterLineMap] = useMemo(
-    () => {
-      if (selectedTag == -1) {
-        console.log('no tag selected -> no colors');
-        return [null, null] ;
-      }
-      segmIds  = segmentsToHighlight(templates, soln_lookup, selectedTag, selectedSeg);
-      console.log('segmIds', segmIds);
-
-      ranges   = coloredRangesForSegments(templates, segmIds, selectedTag);
-      console.log('ranges', ranges);
-
-      const newMap = toLineColorMap(ranges);
-      const gutterMap = toLineGutterColors(ranges);  // Map<number, string[]>
-      console.log('lineMap', newMap, 'gutterMap', gutterMap);
-
-      return [newMap, gutterMap];
-    },
-    [selectedSeg, selectedTag, templates, soln_lookup]
+  const selectedNode = useMemo(
+    () => global.trace.graph.nodes.find((n) => n.id === selectedId),
+    [selectedId, global.trace.graph.nodes]
   );
+
+  const analysisMode = global.ui?.analysis_mode ?? false;
+
+  const templates   = global?.trace?.analysis?.segment?.templates;
+  const selectedTag = selectedId; // could be 'A7' or 7
+  const solnIdx     = parseIntFromTag(selectedTag);
+
+  // All segmIds available for this solution (for the button list & ALL action)
+  const allSegmIds = useMemo(
+    () => segmIdsForAll(templates, solnIdx),
+    [templates, solnIdx]
+  );
+
+  // Active segmIds
+  const segmIds = useMemo(
+    () => activeSegmIds(templates, solnIdx, selectedSegms),
+    [templates, solnIdx, selectedSegms]
+  );
+
+  // Build highlight maps whenever selection or node changes
+  const [lineMap, gutterLineMap] = useMemo(() => {
+    if (!selectedNode || !Number.isFinite(solnIdx)) return [undefined, undefined] as const;
+    const ranges = coloredRangesForSegments(templates, segmIds, String(solnIdx));
+    return [toLineColorMap(ranges), toLineGutterColors(ranges)] as const;
+  }, [templates, segmIds, selectedNode, solnIdx]);
 
 
   if (selectedId === -1 || !selectedNode) return null;
@@ -276,30 +281,27 @@ export default function NodeInspector() {
       <h3>Node {selectedId}</h3>
       <h4>{'<'+selectedNode.artifact_type+'>'}</h4>
 
-      {analysisMode && selectedNode.is_solution && (<details open>
-        <summary>Code Analysis</summary>
-            <pre style={{
-            backgroundColor: '#f0f0f0',
-            padding: '10px',
-            borderRadius: '4px',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            fontFamily: 'monospace',
-            fontSize: '0.85em'
-            }}>
-            <AnalysisColorButtons indices={
-                  (() => {
-                    const IntId = Number((selectedId.match(/-?\d+/) || [])[0]);
-                    const nodeSegments = global.trace.analysis.segment.soln_lookup[IntId];
-                    console.log('soln trace lookup of',IntId,'gave', nodeSegments);
-                    if (!nodeSegments) return [];
-                    return nodeSegments;
-                  })()
-                }
-              onChange={(next) => setSelectedSegmId(next)} />
-            <CodeViewer lines={selectedNode.program_lines} lineColors={lineMap} lineGutterColors={gutterLineMap}/>
-            </pre>
-      </details>)}
+      {analysisMode && selectedNode.is_solution && (
+        <details open>
+          <summary>Code Analysis</summary>
+          <div style={{ backgroundColor: '#f0f0f0', padding: 10, borderRadius: 4 }}>
+            <AnalysisColorButtons
+              indices={allSegmIds}                // the “universe” for this solution
+              selected={selectedSegms}            // what’s currently active
+              onChange={setSelectedSegms}         // updates store immutably
+              title="Segments"
+              maxHeight={180}
+            />
+            <CodeViewer
+              lines={selectedNode.program_lines}
+              lineColors={lineMap}
+              lineGutterColors={gutterLineMap}
+              gutterPosition="left"
+              gutterWidth={10}
+            />
+          </div>
+        </details>
+      )}
 
       <details open={!(analysisMode && selectedNode.is_solution) ? 'true' : 'false' }>
         <summary>Summary</summary>

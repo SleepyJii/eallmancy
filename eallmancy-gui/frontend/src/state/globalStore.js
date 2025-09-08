@@ -18,8 +18,8 @@ export const useGlobalStore = create((setState, getState) => ({
       timestamp: 0,
       has_config: false,
       is_running: false,
-      has_trace: false,
-      trace_is_live: false
+      has_trace: true,
+      trace_is_live: true
     },
     trace: {
       timestamp: 0,
@@ -28,7 +28,7 @@ export const useGlobalStore = create((setState, getState) => ({
     },
     ui: {
       selected_node_id: -1,
-      selected_segm_id: 'ALL',
+      selected_segms: [],
       min_fitness: 0,
       max_fitness: 0,
       selected_algo_type: 'GitDiff',
@@ -70,14 +70,18 @@ export const useGlobalStore = create((setState, getState) => ({
       timestamp: 0,
     }
   },
-  setSelectedSegmId: (val) => {
-    console.log('setting selected_segm_id to',val);
-    set((s) => ({ global: { ...s.global, ui: { ...s.global.ui, selected_segm_id: val } } }));
+  setSelectedSegms: (next) => {
+    setState((s) => ({
+      global: {
+        ...s.global,
+        ui: { ...s.global.ui, selected_segms: next },
+      },
+    }));
   },
 
   // NEW: set explicitly
   setAnalysisMode: (on) =>
-    set((state) => ({
+    setState((state) => ({
       global: {
         ...state.global,
         ui: { ...state.global.ui, analysis_mode: true },
@@ -86,7 +90,7 @@ export const useGlobalStore = create((setState, getState) => ({
 
   // NEW: convenient toggle
   toggleAnalysisMode: () =>
-    set((state) => ({
+    setState((state) => ({
       global: {
         ...state.global,
         ui: { ...state.global.ui, analysis_mode: !(state.global.ui.analysis_mode ?? false) },
