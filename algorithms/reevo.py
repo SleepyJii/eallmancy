@@ -1,18 +1,11 @@
 
 
-## PROMPT-TO-SOLUTION ENGINE
-### uses api information and problem details for easy prompt evaluation
-
-
 import os
-
 from eallmancy.engine.llm_solution_engine_v3 import EngineV3
-
 from eallmancy import Artifact, SinglePartSolution, ProblemSpec
 from typing import List, Optional
 import os
 import re
-
 
 OPENAI_API_SPEC = dict(
         host="api.openai.com",
@@ -26,9 +19,7 @@ engine = EngineV3(
     problem_spec=None
 )
 
-
-
-## PROMPT ENG
+## ARTIFACT TYPES
 
 class CrossoverSolution(SinglePartSolution):
     pass
@@ -51,10 +42,8 @@ class LongTermReflection(Reflection):
     pass
 
 
-# solutionpair_to_reflection = engine.prompt_to_reflection.add_output(observation=r'<<(.*)>>')
-# distilled_reflection = engine.prompt_to_reflection.add_output(observation=r'<<(.*)>>')
+# OPERATORS
 
-# @engine.prompt_to_solution
 def initial_solution() -> SinglePartSolution:
     pmpt = f"""
 Write a `{engine._problem_spec.entrypoint}` function for "{engine._problem_spec.description}"
@@ -64,7 +53,6 @@ Do not give additional explanations, output code only and enclose within a code 
 """
     return engine.generate_artifact(pmpt, SinglePartSolution)
 
-# @solutionpair_to_reflection
 def comparative_reflection(parenta: SinglePartSolution, parentb: SinglePartSolution) -> Reflection:
     scorea, scoreb = parenta.fitness, parentb.fitness
     if (scorea > scoreb) ^ (not engine._problem_spec.maximization):
@@ -81,7 +69,6 @@ You respond with some hints for designing better heuristics, based on the two co
 """
     return engine.generate_artifact(pmpt, ComparativeReflection, parents=[parenta, parentb])
 
-# @engine.prompt_to_solution
 def crossover_solution(parenta: SinglePartSolution, parentb: SinglePartSolution, comp_refl: ComparativeReflection) -> SinglePartSolution:
     scorea, scoreb = parenta.fitness, parentb.fitness
     if (scorea > scoreb) ^ (not engine._problem_spec.maximization):
@@ -103,7 +90,6 @@ Output code only and enclose your code with Python code block: ```python ... ```
 """
     return engine.generate_artifact(pmpt, CrossoverSolution, parents=[parenta, parentb, comp_refl])
 
-# @distilled_reflection
 def longterm_reflection(prev_longterm_refl: LongTermReflection, st_refls: List[ComparativeReflection]) -> LongTermReflection:
     st_refls_clean = '\n'.join(map(str,st_refls))
     pmpt = f"""
@@ -114,7 +100,6 @@ Write constructive hints for designing better heuristics, based on prior reflect
 """
     return engine.generate_artifact(pmpt, LongTermReflection, parents=[prev_longterm_refl, *st_refls])
 
-# @engine.prompt_to_solution
 def elite_mutated_solution(longterm_refl: LongTermReflection, elite_soln: SinglePartSolution):
     pmpt = f"""
 Write a `{engine._problem_spec.entrypoint}` function for "{engine._problem_spec.description}"\n
@@ -134,11 +119,9 @@ Output code only and enclose your code with Python code block: ```python ... ```
     return engine.generate_artifact(pmpt, EliteSolution, parents=_par)
     
 
-
-## REEVO MAIN LOOP
+# MAIN EVOLUTION LOOP
 
 import random
-
 
 def reevo(initial_size=5, pop_size=8, max_samples=30, max_generations=int(1e9), problem_spec=None, api_spec=None, **kwargs):
 
@@ -161,7 +144,6 @@ def reevo(initial_size=5, pop_size=8, max_samples=30, max_generations=int(1e9), 
                 if idxa+1 >= len(population):
                     break
                 comparative_refls.append(comparative_reflection(population[idxa], population[idxa+1]))
-                # print('COMPARREFL\n',comparative_refls[-1])
             
             # crossover, using ST reflections and current solns
             crossover_solns = []
@@ -170,11 +152,9 @@ def reevo(initial_size=5, pop_size=8, max_samples=30, max_generations=int(1e9), 
                     crossover_solution(population[refl_idx*2], population[refl_idx*2+1], comparison_refl)
                 )
                 n_solns += 1
-                # print('CROSSOVER\n', crossover_solns[-1])
             
             # long term reflection, distill past and current comparisons
             longterm_refl = longterm_reflection(longterm_refl, comparative_refls)
-            # print('LTREFL\n', longterm_refl)
 
             # elitist mutation, using new heuristics and LT reflections
             elite_soln = min(population+crossover_solns, key=lambda ss: ss.fitness * (-1+2*engine._problem_spec.maximization))
@@ -183,7 +163,6 @@ def reevo(initial_size=5, pop_size=8, max_samples=30, max_generations=int(1e9), 
                 for _ in range(pop_size - len(crossover_solns))
             ]
             n_solns += len(elite_mutated_solns)
-            # print('ELITEMUT\n',elite_mutated_solns[0])
             
             population = population + crossover_solns + elite_mutated_solns
             population = list(sorted(population, key=lambda sln: sln.fitness, reverse=engine._problem_spec.maximization))[:pop_size]

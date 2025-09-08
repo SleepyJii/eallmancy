@@ -39,21 +39,17 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
 # @engine.prompt_to_solution
 def generate_islespawn(*isle_examples):
     base = f'''{engine._problem_spec.description}
-Previous implementations, from *worst to best*
 '''
-    base += '\n'.join(list(map(str, sorted(isle_examples, key=lambda sln: sln.fitness-1*(-1+2*engine._problem_spec.maximization), reverse=True))))
+    fitsrt_solns = list(map(str, sorted(isle_examples, key=lambda sln: sln.fitness-1*(-1+2*engine._problem_spec.maximization), reverse=True)))
+    base += '\n'.join(f'\nNo. {idx} implementation is:\n```python\n{a.program}\n```' for idx, a in enumerate(fitsrt_solns))
     base += f'''
-Please assist in writing a new version of the algorithm with the same function signature as below:
+Please help me create a new algorithm that is an improvement of the existing implementations. Implement the following Python function:
 ```python
 {engine._problem_spec.template}
 ```
 Do not give an exact copy of the provided implementations. Enclose within a code block like ```python ... ```. Do not give additional explanations.
 '''
     return engine.generate_artifact(base, SinglePartSolution, parents=isle_examples)
-
-
-
-
 
 
 ## MAIN LOOP

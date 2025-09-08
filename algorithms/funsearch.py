@@ -1,10 +1,12 @@
 
-
-## PROMPT-TO-SOLUTION ENGINE
-### uses api information and problem details for easy prompt evaluation
-
 from eallmancy import SinglePartSolution, ProblemSpec
 import os
+
+from itertools import chain
+from collections import defaultdict
+from typing import List, Dict
+import numpy as np
+import scipy
 
 from eallmancy.engine.llm_solution_engine_v3 import EngineV3
 
@@ -22,9 +24,6 @@ engine = EngineV3(
 
 
 ## PROMPT SAMPLERS
-### decorated string factories. can use PROBLEM_STATEMENT/PROBLEM_TEMPLATE to access problem details from engine
-
-# @engine.prompt_to_solution
 def generate_initial():
     base =  f"""
 {engine._problem_spec.description}
@@ -36,7 +35,6 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
 """
     return engine.generate_artifact(base, SinglePartSolution)
 
-# @engine.prompt_to_solution
 def generate_islespawn(*isle_examples):
     base = f'''{engine._problem_spec.description}
 Previous implementations, from *worst to best*
@@ -50,23 +48,6 @@ Please assist in writing a next version of the algorithm with the same function 
 Enclose within a code block like ```python ... ```. Do not give additional explanations.
 '''
     return engine.generate_artifact(base, SinglePartSolution, parents=isle_examples)
-
-
-
-
-
-
-## MAIN LOOP
-### reasons solely about the prompt composition, shouldn't need to think about prompt or LLM details at all
-
-### useful here to know about the Solution class, intended to implement all meaningful interfaces for this flow
-
-from itertools import chain
-from collections import defaultdict
-from typing import List, Dict
-import numpy as np
-import scipy
-
 
 def _softmax(logits: np.ndarray, temperature: float) -> np.ndarray:
     """Returns the tempered softmax of 1D finite `logits`."""
@@ -138,7 +119,6 @@ def funsearch(n_isles=5, max_samples=2*60, samples_per_generation=10, api_spec=N
 
     with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
         engine.start()
-
 
         islands = [FunIsland().register(generate_initial()) for _ in range(n_isles)]
 
