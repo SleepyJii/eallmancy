@@ -3,9 +3,8 @@
 import re
 from typing import Dict, List, Optional
 
-from llm4ad.tools.llm.llm_api_https import HttpsApi
-from llm4ad.tools.llm.llm_api_openai import OpenAIAPI
-from llm4ad.base.sample import SampleTrimmer
+from eallmancy.sampling import SampleTrimmer, TextFunctionProgramConverter, Program, Function
+from eallmancy.sampling import OpenAIAPI, HttpsApi
 
 import networkx as nx
 import numpy as np
@@ -13,7 +12,6 @@ import random
 import itertools
 import inspect
 
-from llm4ad.base.code import Program
 from eallmancy.artifacts.artifact import Artifact
 from eallmancy.engine.problem_spec import ProblemSpec
 from eallmancy.artifacts.single_part_solution import SinglePartSolution

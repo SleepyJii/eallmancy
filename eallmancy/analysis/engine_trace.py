@@ -82,18 +82,19 @@ class EngineTrace:
     def save(self, path):
         self.lock = None # lock is unpickleable
         Path(path).parent.mkdir(exist_ok=True, parents=True)
-        if self.analysis_cache.segment is not None:
+        if hasattr(self, 'analysis_cache') and self.analysis_cache.segment is not None:
             self.analysis_cache.segment._trace = None
         with open(path, 'wb') as f:
             pk.dump(self, f)
-        self.analysis_cache.segment._trace = self
+        if hasattr(self, 'analysis_cache'):
+            self.analysis_cache.segment._trace = self
 
     @staticmethod
     def load(path):
         with open(path, 'rb') as f:
             trace: EngineTrace = pk.load(f)
         trace.lock = Lock()
-        if trace.analysis_cache.segment is not None:
+        if hasattr(trace, 'analysis_cache') and trace.analysis_cache.segment is not None:
             trace.analysis_cache.segment = trace
         return trace
 

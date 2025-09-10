@@ -1,7 +1,8 @@
 
 from typing import Optional
 import re
-from llm4ad.base.code import TextFunctionProgramConverter, Program, Function
+from eallmancy.sampling import SampleTrimmer, TextFunctionProgramConverter, Program, Function
+
 
 from eallmancy.evaluation.evaluation import Evaluation
 from eallmancy.artifacts.artifact import Artifact
