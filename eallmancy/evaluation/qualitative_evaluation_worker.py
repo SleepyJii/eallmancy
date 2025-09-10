@@ -6,8 +6,7 @@ from pathlib import Path
 import uuid
 import os
 import re
-from llm4ad.base.sample import SampleTrimmer
-from llm4ad.base.code import Program
+from eallmancy.sampling import SampleTrimmer, TextFunctionProgramConverter, Program, Function
 from abc import ABC, abstractmethod
 from typing import List
 from eallmancy.evaluation.evaluation import Evaluation
