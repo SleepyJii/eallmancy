@@ -8,55 +8,90 @@ from reevo.problems.tsp_aco.eval_jk import TSPACOEvaluator, promptdetails as TSP
 
 from eallmancy import ProblemSpec, evaluator as reallm_evaluator_func
 from .converters import _swap_max_min
+from typing import Optional
 
 
-class BPPoffACOProblemSpec(ProblemSpec):
+
+import dataclasses
+
+
+@dataclasses.dataclass
+class InformedProblemSpec(ProblemSpec):
+    setting_description: str = ""
+    func_description: str = ""
+    external_knowledge: str = ""
+
+
+_ID = lambda f: f
+
+
+class BPPoffACOProblemSpec(InformedProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = id if not maximization else _swap_max_min
+        _signflips = _ID if not maximization else _swap_max_min
         super().__init__(
-            description=BPPoffACO_prompts["func_desc"],
+            description=BPPoffACO_prompts["description"] + '\n' + BPPoffACO_prompts["func_desc"],
             template=BPPoffACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
-            evaluator=reallm_evaluator_func(_signflips(BPPoffACOEvaluator(*args, **kwargs).evaluate)),
+            evaluator=(_signflips(BPPoffACOEvaluator(*args, **kwargs).evaluate)),
+            maximization=maximization,
+            external_knowledge=BPPoffACO_prompts["external_knowledge"],
+            setting_description=BPPoffACO_prompts["description"],
+            func_description=BPPoffACO_prompts["func_desc"],
         )
 
-class CVRPACOProblemSpec(ProblemSpec):
+class CVRPACOProblemSpec(InformedProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = id if not maximization else _swap_max_min
+        _signflips = _ID if not maximization else _swap_max_min
         super().__init__(
-            description=CVRPACO_prompts["func_desc"],
+            description=CVRPACO_prompts["description"] + '\n' + CVRPACO_prompts["func_desc"],
             template=CVRPACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
-            evaluator=reallm_evaluator_func(_signflips(CVRPACOEvaluator(*args, **kwargs).evaluate)),
+            evaluator=(_signflips(CVRPACOEvaluator(*args, **kwargs).evaluate)),
+            maximization=maximization,
+            external_knowledge=CVRPACO_prompts["external_knowledge"],
+            setting_description=CVRPACO_prompts["description"],
+            func_description=CVRPACO_prompts["func_desc"],
         )
 
-class MKPACOProblemSpec(ProblemSpec):
+class MKPACOProblemSpec(InformedProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = id if maximization else _swap_max_min
+        _signflips = _ID if maximization else _swap_max_min
         super().__init__(
-            description=MKPACO_prompts["func_desc"],
+            description=MKPACO_prompts["description"] + '\n' + MKPACO_prompts["func_desc"],
             template=MKPACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
-            evaluator=reallm_evaluator_func(_signflips(MKPACOEvaluator(*args, **kwargs).evaluate)),
+            evaluator=(_signflips(MKPACOEvaluator(*args, **kwargs).evaluate)),
+            maximization=maximization,
+            external_knowledge=MKPACO_prompts["external_knowledge"],
+            setting_description=MKPACO_prompts["description"],
+            func_description=MKPACO_prompts["func_desc"],
         )
 
-class OPACOProblemSpec(ProblemSpec):
+class OPACOProblemSpec(InformedProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = id if maximization else _swap_max_min
+        _signflips = _ID if maximization else _swap_max_min
         super().__init__(
-            description=OPACO_prompts["func_desc"],
+            description=OPACO_prompts["description"] + '\n' + OPACO_prompts["func_desc"],
             template=OPACO_prompts["func_signature"] + '\n\tpass',
             entrypoint="heuristic",
-            evaluator=reallm_evaluator_func(_signflips(OPACOEvaluator(*args, **kwargs).evaluate)),
+            evaluator=(_signflips(OPACOEvaluator(*args, **kwargs).evaluate)),
+            maximization=maximization,
+            external_knowledge=OPACO_prompts["external_knowledge"],
+            setting_description=OPACO_prompts["description"],
+            func_description=OPACO_prompts["func_desc"],
         )
 
-class TSPACOProblemSpec(ProblemSpec):
+class TSPACOProblemSpec(InformedProblemSpec):
     def __init__(self, maximization=False, *args, **kwargs):
-        _signflips = id if not maximization else _swap_max_min
+        _signflips = _ID if not maximization else _swap_max_min
         super().__init__(
-            description=TSPACO_prompts["func_desc"],
-            template=TSPACO_prompts["func_signature"] + '\n\tpass',
+            description=TSPACO_prompts["description"] + '\n' + TSPACO_prompts["func_desc"],
+            template=TSPACO_prompts["seed_func"],
             entrypoint="heuristic",
-            evaluator=reallm_evaluator_func(_signflips(TSPACOEvaluator(*args, **kwargs).evaluate)),
+            evaluator=(_signflips(TSPACOEvaluator(*args, **kwargs).evaluate)),
+            maximization=maximization,
+            external_knowledge=TSPACO_prompts["external_knowledge"],
+            setting_description=TSPACO_prompts["description"],
+            func_description=TSPACO_prompts["func_desc"],
         )
 

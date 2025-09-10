@@ -2,9 +2,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
-from llm4ad.tools.llm.llm_api_https import HttpsApi
-from llm4ad.base.sample import SampleTrimmer
-
+from eallmancy.sampling import SampleTrimmer, TextFunctionProgramConverter, Program, Function
 from eallmancy.engine.problem_spec import ProblemSpec
 
 import re

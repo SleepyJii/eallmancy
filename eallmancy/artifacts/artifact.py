@@ -1,7 +1,6 @@
 
 
-from llm4ad.base.sample import SampleTrimmer
-from llm4ad.base.code import TextFunctionProgramConverter, Program, Function
+from eallmancy.sampling import SampleTrimmer, TextFunctionProgramConverter, Program, Function
 from typing import Optional
 import datetime
 import re

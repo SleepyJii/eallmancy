@@ -1,5 +1,5 @@
 
-from eallmancy.engine.llm_solution_engine_v3 import EngineV3
+# from eallmancy.engine.llm_solution_engine_v3 import EngineV3
 from eallmancy.evaluation.evaluation import Evaluation, evaluator
 from eallmancy.engine.problem_spec import ProblemSpec
 from eallmancy.artifacts.artifact import Artifact

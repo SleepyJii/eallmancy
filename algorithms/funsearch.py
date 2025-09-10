@@ -1,64 +1,53 @@
 
-
-## PROMPT-TO-SOLUTION ENGINE
-### uses api information and problem details for easy prompt evaluation
-
-from eallmancy import LLMSolutionEngine, SinglePartSolution, ProblemSpec
+from eallmancy import SinglePartSolution, ProblemSpec
 import os
-
-
-engine = LLMSolutionEngine(
-    api_spec=dict(
-        host="api.openai.com",
-        key=os.environ['OPENAI_API_KEY'],  # your key, e.g., sk-xxxxxxxxxx
-        model="gpt-4o-mini",  # your llm, e.g., gpt-3.5-turbo, deepseek-chat
-        timeout=20
-    ),
-    problem_spec=None  # can alternatively specify problem here.
-)
-
-
-## PROMPT SAMPLERS
-### decorated string factories. can use PROBLEM_STATEMENT/PROBLEM_TEMPLATE to access problem details from engine
-
-@engine.prompt_to_solution
-def generate_initial():
-    return """
-<PROBLEM_DESCR>
-Implement the following Python function:
-```python
-<PROBLEM_TEMPLATE>
-```
-Enclose within a code block like ```python ... ```. Do not give additional explanations.
-"""
-
-@engine.prompt_to_solution
-def generate_islespawn(*isle_examples):
-    base = '''<PROBLEM_DESCR>
-Previous implementations, from *worst to best*
-'''
-    base += '\n'.join(list(map(str, sorted(isle_examples, key=lambda sln: sln.fitness, reverse=True))))
-    base += '''
-Please assist in writing a next version of the algorithm with the same function signature:
-<PROBLEM_TEMPLATE>
-Enclose within a code block like ```python ... ```. Do not give additional explanations.
-'''
-    return base
-
-
-
-## MAIN LOOP
-### reasons solely about the prompt composition, shouldn't need to think about prompt or LLM details at all
-
-### useful here to know about the Solution class, intended to implement all meaningful interfaces for this flow
 
 from itertools import chain
 from collections import defaultdict
 from typing import List, Dict
 import numpy as np
 import scipy
-import time
 
+from eallmancy.engine.llm_solution_engine_v3 import EngineV3
+
+OPENAI_API_SPEC = dict(
+        host="api.openai.com",
+        key=os.environ.get('OPENAI_API_KEY', ''),
+        model="gpt-4o-mini",
+        timeout=20
+)    
+
+engine = EngineV3(
+    api_spec=OPENAI_API_SPEC,
+    problem_spec=None
+)
+
+
+## PROMPT SAMPLERS
+def generate_initial():
+    base =  f"""
+{engine._problem_spec.description}
+Implement the following Python function:
+```python
+{engine._problem_spec.template}
+```
+Enclose within a code block like ```python ... ```. Do not give additional explanations.
+"""
+    return engine.generate_artifact(base, SinglePartSolution)
+
+def generate_islespawn(*isle_examples):
+    base = f'''{engine._problem_spec.description}
+Previous implementations, from *worst to best*
+'''
+    base += '\n'.join(list(map(str, sorted(isle_examples, key=lambda sln: sln.fitness, reverse=True))))
+    base += f'''
+Please assist in writing a next version of the algorithm with the same function signature:
+```python
+{engine._problem_spec.template}
+```
+Enclose within a code block like ```python ... ```. Do not give additional explanations.
+'''
+    return engine.generate_artifact(base, SinglePartSolution, parents=isle_examples)
 
 def _softmax(logits: np.ndarray, temperature: float) -> np.ndarray:
     """Returns the tempered softmax of 1D finite `logits`."""
@@ -77,7 +66,7 @@ def _softmax(logits: np.ndarray, temperature: float) -> np.ndarray:
     full_logits = np.zeros(logits.shape)
     full_logits[np.isfinite(logits)] = result
     full_logits[~np.isfinite(logits)] = 0.0
-    return result
+    return full_logits
 
 
 class FunIsland:
@@ -92,7 +81,7 @@ class FunIsland:
         return self
 
     def best_soln(self):
-        return min(chain(*self._clusters.values()), key=lambda sln: sln.fitness)
+        return min(chain(*self._clusters.values()), key=lambda sln: sln.fitness * -1*(-1+2*engine._problem_spec.maximization))
 
     def select_parents(self):
 
@@ -101,7 +90,7 @@ class FunIsland:
         num_progs = {sign: len(mems) for sign, mems in self._clusters.items()}
         temp_init, temp_period = self.selection_temp_init, self.selection_temp_period
         cluster_probs = _softmax(
-            np.array(list(cluster_scores.values())) * -1, # -1 for minimization 
+            np.array(list(cluster_scores.values())) * (-1+2*engine._problem_spec.maximization), # -1 for minimization 
             temp_init * (1 - sum(list(num_progs.values())) % temp_period) / temp_period
         )
 
@@ -126,34 +115,33 @@ class FunIsland:
         )
 
 
-def funsearch(n_isles=10, max_time=2*60, reset_period=4*60*60, api_spec=None, problem_spec=None):
+def funsearch(n_isles=5, max_samples=2*60, samples_per_generation=10, api_spec=None, problem_spec=None):
 
-    with engine.set_api(api_spec):
-        with engine.set_problem(problem_spec):  
-            islands = [FunIsland().register(generate_initial()) for _ in range(n_isles)]
+    with engine.set(problem_spec=problem_spec, api_spec=api_spec) as ec: 
+        engine.start()
 
-            st_time = time.time()
-            while time.time()-st_time < max_time:
-                isle_idx = np.random.randint(len(islands))
-                new_soln = generate_islespawn(*islands[isle_idx].select_parents())
-                islands[isle_idx].register(new_soln)
+        islands = [FunIsland().register(generate_initial()) for _ in range(n_isles)]
 
-                last_reset_time = time.time()
-                if (time.time() - last_reset_time > reset_period): # reset worst half of the islands
-                    islands = list(sorted(
-                        islands,
-                        key=lambda i: i.best_soln().fitness + np.random.random()*1.e-6
-                    ))
-                    keep_islands = islands[:len(islands) // 2]
-                    founder_islands = np.random.choice(keep_islands, size=(len(islands) - len(keep_islands)))
-                    new_islands = [
-                        FunIsland().register(origin_isle.best_soln())
-                        for origin_isle in founder_islands
-                    ]
-                    islands = keep_islands + new_islands
-                    last_reset_time = time.time()
+        for sidx in range(1,max_samples+1):
+            isle_idx = np.random.randint(len(islands))
+            new_soln = generate_islespawn(*islands[isle_idx].select_parents())
+            islands[isle_idx].register(new_soln)
 
-    return min(islands, key=lambda ii: ii.best_soln().fitness).best_soln()
+            if (sidx % samples_per_generation) == 0: # reset worst half of the islands
+                islands = list(sorted(
+                    islands,
+                    key=lambda i: i.best_soln().fitness + np.random.random()*1.e-6,
+                    reverse=engine._problem_spec.maximization
+                ))
+                keep_islands = islands[:len(islands) // 2]
+                founder_islands = np.random.choice(keep_islands, size=(len(islands) - len(keep_islands)))
+                new_islands = [
+                    FunIsland().register(origin_isle.best_soln())
+                    for origin_isle in founder_islands
+                ]
+                islands = keep_islands + new_islands
+
+        return ec.trace
 
 
 if __name__=="__main__":
