@@ -120,7 +120,7 @@ export default function CodeViewer({
           <div style={{ padding: 10, color: '#aaa' }}>No code to display.</div>
         ) : (
           data.map((text, idx) => {
-            const lineNo = idx + 1;
+            const lineNo = idx ;//+ 1;
             const isHL = highlights.has(lineNo);
             const bg = lineColors?.get(lineNo) ?? (isHL ? '#343a40' : 'transparent');
             const gutterColors = lineGutterColors?.get(lineNo) ?? [];

@@ -65,6 +65,8 @@ def re_extract(ptrn, sstr, typecast=str):
         return None
     return typecast(sres[0])
 
+def _has_segm(atm, solnid, st, en):
+    return len([e for e in atm.entries if e.soln_id == solnid and e.start_token==st and e.end_token == en]) > 0
 
 def _match_to_solutionsegment(n, segm_match, tcmp, first=True):
     if first:
@@ -105,26 +107,71 @@ def glom_cont_segments(seg_ls):
 
     return new_seg
 
+def rolling_glom_cont_atoms(atms):
+    for b_idx in range(1,len(atms)):
+        atm_a = atms[b_idx-1]
+        atm_b = atms[b_idx]
+        pass
+
+def _contains_superset(ts, ss_ls, strict=False):
+    for ss in ss_ls:
+        if set(ss).issuperset(ts) and (not strict or set(ts)!=set(ss)):
+            return True
+    return False
+
+def _get_subset(ts, ss_ls):
+    for ss in ss_ls:
+        if ts.issuperset(ss):
+            return ss
+    return None
+
+
+# def _codeemb_split_atm(atm, persp_id, thresh=0.95, verbose=False, prevseen=[]):
+#     # first, cut down everything that doesnt match persp_id segment to threshold
+#     persp_segm = atm.get(persp_id)
+#     valid_entries = list(sorted([
+#         e for e in atm.entries
+#         if (cosine_sim(persp_segm.embedding, e.embedding)>=thresh) and e.soln_id!=persp_id
+#     ], key=lambda ve: ve.soln_id))
+#     if verbose:
+#         print(thresh, [[cosine_sim(_e.embedding, e.embedding) for _e in [persp_segm]+valid_entries] for e in [persp_segm]+valid_entries])
+#     clusters = []
+#     for segm in valid_entries:
+#         for c_idx, cl in enumerate(clusters):
+#             if not any([cosine_sim(segm.embedding, mem.embedding) < thresh for mem in cl]):
+#                 clusters[c_idx].append(segm)
+#                 break
+#         else:
+#             clusters.append([segm])  # new cluster
+#     res = [MatchAtom(cl+[persp_segm]) for cl in clusters]
+#     res = [ma for ma in res if not _contains_superset(ma.solution_members(), prevseen)]
+#     return res
+
 
 def _codeemb_split_atm(atm, persp_id, thresh=0.95, verbose=False):
-    # first, cut down everything that doesnt match persp_id segment to threshold
-    persp_segm = atm.get(persp_id)
-    valid_entries = [
+    # # first, cut down everything that doesnt match persp_id segment to threshold
+    # persp_segm = atm.get(persp_id)
+    # valid_entries = list(sorted([
+    #     e for e in atm.entries
+    #     if (cosine_sim(persp_segm.embedding, e.embedding)>=thresh) and e.soln_id!=persp_id
+    # ], key=lambda ve: ve.soln_id))
+
+    valid_entries = list(sorted([
         e for e in atm.entries
-        if (cosine_sim(persp_segm.embedding, e.embedding)>=thresh) and e.soln_id!=persp_id
-    ]
+    ], key=lambda ve: ve.soln_id))
+
     if verbose:
         print(thresh, [[cosine_sim(_e.embedding, e.embedding) for _e in [persp_segm]+valid_entries] for e in [persp_segm]+valid_entries])
+    
     clusters = []
     for segm in valid_entries:
         for c_idx, cl in enumerate(clusters):
             if not any([cosine_sim(segm.embedding, mem.embedding) < thresh for mem in cl]):
                 clusters[c_idx].append(segm)
-                break
-        else:
-            clusters.append([segm])  # new cluster
-    res = [MatchAtom(cl+[persp_segm]) for cl in clusters]
-    # print(f'\t\t\treturning {len(res)} atms')
+        clusters.append([segm])
+    # res = [MatchAtom(cl+[persp_segm]) for cl in clusters]
+    nosups_clusters = [c for c in clusters if not _contains_superset(c, clusters, strict=True)]
+    res = [MatchAtom(cl) for cl in nosups_clusters]
     return res
 
 
@@ -168,10 +215,16 @@ class SegmentTraceAnalysis:
         return _atoms
 
 
-    def glommed_reclustered_atms(self, _atoms, min_token_len=7, min_members=3, ce_cutoff=0.95):
+    def glommed_reclustered_atms(self, _atoms, min_token_len=7, min_members=3, ce_cutoff=0.90):
         
         # THIS IS THE FINAL TARGET
-        seg_atoms = defaultdict(_ID2LIST)
+        seg_atoms = defaultdict(_ID2SET)
+        seen_persps = []
+        prevsplit_seenmems = defaultdict(_ID2SET)
+        prevsplit_seenmatches = defaultdict(_ID2SET)
+        prevseen_segmatoms = defaultdict(_ID2SET)
+
+        prev_embsplit_atms = set() # trying to skip pointless work, embsplit no longer works on persp_id
 
         for arte in self._trace.list:
             if not arte.is_solution:
@@ -185,7 +238,12 @@ class SegmentTraceAnalysis:
             # for batch calling code emb
             to_embcheck_atms = []
                 
+            old_verb = self.verbose
             for yidx, (seg_subatoms, seg_members) in enumerate(distinct_subsegments(_atoms[persp_id], persp_id)):
+                # if 11 in seg_members and 45 in seg_members:
+                #     self.verbose = True
+                # else:
+                #     self.verbose = False
             
                 ## FILTER :: dont include short token matches
                 segm_len = sum([a.token_length() for a in seg_subatoms])
@@ -201,6 +259,8 @@ class SegmentTraceAnalysis:
                 glommed_segs = []
                 persp_segm = None
                 for m in seg_members:
+                    # if m in seen_persps:
+                    #     continue
 
                     m_segs = [a.get(m) for a in seg_subatoms]
                     glom_seg = glom_cont_segments(m_segs)
@@ -220,6 +280,7 @@ class SegmentTraceAnalysis:
                     continue
 
                 to_embcheck_atms.append( seg_atom )
+            self.verbose = old_verb
                 
             to_embcheck_segms = []
             for a_id, atm in enumerate(to_embcheck_atms):
@@ -239,6 +300,56 @@ class SegmentTraceAnalysis:
 
             ## all internal segments should now have embeddings - filter out solutions!
             for atm in to_embcheck_atms:
+                seg_members = frozenset(atm.solution_members())
+                
+                # if any([seg_members in prevsplit_seenmems[e] for e in atm.entries]):
+                #     continue
+                # else:
+                #     for sm in seg_members:
+                #         segm = atm.get(sm)
+                #         prevsplit_seenmems[segm].add(seg_members)
+
+                if any([set(atm.entries).intersection(prevsplit_seenmatches[e]) for e in atm.entries]):
+
+                    # if atm.get(80) and atm.get(80).start_token == 0 and atm.get(80).end_token == 14:
+                    #     print(f'\toverlap with [{persp_id}] 80:0-14')
+
+                    # OK, some overlap with previous matches
+                    # lets check if we have new solutions showing up for whatever reason
+                    prevmatched = set(chain(*[prevsplit_seenmatches[e] for e in atm.entries]))
+                    prevmatched_mems = set([e.soln_id for e in prevmatched])
+                    newfound_match_mems = seg_members.difference(prevmatched_mems)
+                    if len(newfound_match_mems) > 0:
+                        # if atm.get(80) and atm.get(80).start_token == 0 and atm.get(80).end_token == 14:
+                        #     print(f'\t\t new members: {newfound_match_mems}')
+                        # okay... SOMETHING is new.
+                        # synth extend the old considered atom with new stuff
+                        synthmatched = list(prevmatched) + [e for e in atm.entries if e.soln_id in newfound_match_mems]
+                        atm = MatchAtom(synthmatched)
+
+                        # we need to delete old entries.
+                        for sme in prevmatched:
+                            seg_atoms[sme.soln_id] -= {
+                                atm for atm in seg_atoms[sme.soln_id] if set(synthmatched).issuperset(atm.entries)
+                            }
+                        # if atm.get(80) and atm.get(80).start_token == 0 and atm.get(80).end_token == 14:
+                        #     print(f'\t\t RECHECK, segm_atoms atms containing targ', len({_has_segm(atm, 80, 0, 14) for atm in chain(*seg_atoms.values())}))
+                    else:
+                        # if atm.get(80) and atm.get(80).start_token == 0 and atm.get(80).end_token == 14:
+                        #     print(f'\t\t no new members skipping addition')
+                        # no new solutions? dump it.
+                        continue
+
+                for sm in seg_members:
+                    segm = atm.get(sm)
+                    prevsplit_seenmatches[segm].update(set(atm.entries))
+
+
+
+                # if 11 in seg_members and 45 in seg_members:
+                #     self.verbose = True
+                # else:
+                #     self.verbose = False
                 # need to recalc code emb clusters... in chronological order
                 if atm.get(persp_id) is None:
                     if self.verbose: print(f'\t\tlost persp_id segm for some reason???')
@@ -246,12 +357,46 @@ class SegmentTraceAnalysis:
                     continue # idk why this happens, skip
                 # else:
                 #     print('\t\t[P{persp_id}] unioning atms')
+
+                if 9 in atm.solution_members() and atm.get(9).start_token == 4 and atm.get(9).end_token == 20:
+                    print(f'\t[{persp_id}] CONSIDERING 9:4-20 amount', atm.solution_members())
                 split_atoms = _codeemb_split_atm(atm, persp_id, thresh=ce_cutoff, verbose=self.verbose)
                 for spl_atm in split_atoms:
                     if len(spl_atm.entries) < min_members:
-                        if self.verbose: print(f'\t\t{spl_atm.solution_members()} split cluster too small')
+                        if self.verbose: print(f'\t\t{spl_atm.solution_members()} split cluster too small (< {min_members})')
                         continue
-                    seg_atoms[persp_id].append(spl_atm)
+                    spl_soln_mems = spl_atm.solution_members()
+                    for sm in spl_soln_mems:
+                        sm_segm = spl_atm.get(sm)
+                        # prevseen = prevseen_segmatoms[sm_segm]
+                        # if _contains_superset(spl_soln_mems, prevseen):
+                        #     continue
+                        # elif _get_subset(spl_soln_mems, prevseen):
+                        #     deleted_mems = []
+                        #     while _get_subset(spl_soln_mems, prevseen):
+                        #         to_del_mems = _get_subset(spl_soln_mems, prevseen)
+                        #         deleted_mems.append(to_del_mems)
+                        #         to_del_atm = ([atm for atm in seg_atoms[sm] if atm.solution_members()==to_del_mems] or [None])[0]
+                        #         if to_del_atm:
+                        #             for _sm in to_del_mems:
+                        #                 _sm_segm = to_del_atm.get(_sm)
+                        #                 seg_atoms[_sm] -= {to_del_atm}
+                        #                 if _sm_segm.soln_id == 9 and _sm_segm.start_token==4 and _sm_segm.end_token==20:
+                        #                     print(f'\t\t[{persp_id}] DELETING 9:3-14',to_del_mems)
+                        #                 prevseen_segmatoms[_sm_segm] -=  {to_del_mems}
+                        #         else:
+                        #             prevseen_segmatoms[sm_segm] -= {to_del_mems}
+                        continue
+                    else:
+                        # needs to not be invalidated by any containing member
+                        for sm in spl_soln_mems:
+                            sm_segm = spl_atm.get(sm)
+                            # if sm_segm.soln_id == 80 and sm_segm.start_token==0 and sm_segm.end_token==14:
+                            #     print(f'\t\t[{persp_id}] ADDING 9:4-20',spl_soln_mems)
+                            # prevseen_segmatoms[sm_segm].add(frozenset(spl_soln_mems))
+                            seg_atoms[sm].add(spl_atm)
+            # seen_persps.append(persp_id)
+            self.verbose = old_verb
         return seg_atoms
 
     def collect_atomic_templates(self):
@@ -272,14 +417,14 @@ class SegmentTraceAnalysis:
 
 
 
-    def __init__(self, trace, tcmp, invalid_solns=set(), min_tokens=7, emb_cutoff=0.97, min_members=3, verbose=False):
+    def __init__(self, trace, tcmp, invalid_solns=set(), min_tokens=7, emb_cutoff=0.90, min_members=2, verbose=False):
         self._trace = trace
         self._tcmp = tcmp
         self._invalid_solns=invalid_solns
         self.verbose = verbose
 
         # atomize `cluster_traceids` matches
-        _debug_atoms = _atoms = self._build_atoms(tcmp)
+        self._debug_atoms = _atoms = self._build_atoms(tcmp)
 
         # enhance with embedding distances per match
         self._atoms = self.glommed_reclustered_atms(

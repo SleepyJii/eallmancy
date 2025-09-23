@@ -97,63 +97,55 @@ def _build_templ_lookup(templs):
 
 
 
-def _find_programbody_start(prog):
-    fsig_idx = prog.find('def ')
-    programbody_idx = fsig_idx + prog[fsig_idx:].find('\n')+1
-    return programbody_idx
+# def _find_programbody_start(prog):
+#     fsig_idx = prog.find('def ')
+#     programbody_idx = fsig_idx + prog[fsig_idx:].find('\n')+1
+#     return programbody_idx
 
-def grab_programbody(prog):
-    return prog[_find_programbody_start(prog):]
+# def grab_programbody(prog):
+#     return prog[_find_programbody_start(prog):]
 
-def simple_segm_substr(trace, s_entry, tcmp):
-    program_str = grab_programbody(trace[s_entry.soln_id].program)
-    st_tkn, en_tkn = s_entry.start_token, s_entry.end_token
-    tkn_list = tcmp['submissions'][s_entry.soln_id]['tokenList']
-    st_tkn_linestart, en_tkn_lineend = _find_token_line_indices(program_str, st_tkn, en_tkn, tkn_list)
-    nx_tkn_linestart = _find_line_stidx(program_str, tkn_list[min(en_tkn+1, len(tkn_list)-1)]['line']-1)
-    treated_tkn_end = max(en_tkn_lineend,nx_tkn_linestart)
-    # programbody_start = _find_programbody_start(program_str)
-    return program_str[
-    # max(st_tkn_linestart, programbody_start):max(treated_tkn_end, programbody_start)
-    st_tkn_linestart:treated_tkn_end
-    ]
-
-
+# def simple_segm_substr(trace, s_entry, tcmp):
+#     program_str = grab_programbody(trace[s_entry.soln_id].program)
+#     st_tkn, en_tkn = s_entry.start_token, s_entry.end_token
+#     tkn_list = tcmp['submissions'][s_entry.soln_id]['tokenList']
+#     st_tkn_linestart, en_tkn_lineend = _find_token_line_indices(program_str, st_tkn, en_tkn, tkn_list)
+#     nx_tkn_linestart = _find_line_stidx(program_str, tkn_list[min(en_tkn+1, len(tkn_list)-1)]['line']-1)
+#     treated_tkn_end = max(en_tkn_lineend,nx_tkn_linestart)
+#     # programbody_start = _find_programbody_start(program_str)
+#     return program_str[
+#     # max(st_tkn_linestart, programbody_start):max(treated_tkn_end, programbody_start)
+#     st_tkn_linestart:treated_tkn_end
+#     ]
 
 
-from eallmancy.analysis.analyzer.tokenstr_handling import grab_programbody, _find_token_line_indices, _find_line_stidx
-def _linenums_idx(prg):
-    _nums = {0: 0}
-    last = 0
-    last_idx = 0
-    while last+1 < len(prg):
-        nxt = prg[last+1:].find('\n')
-        if nxt == -1:
-            break
-        _nums[last_idx+1] = last+1 + nxt
-        last_idx += 1
-        last = last+1+nxt
-    return _nums
+
+
+from eallmancy.analysis.analyzer.tokenstr_handling import grab_programbody, _find_token_line_indices, _find_line_stidx, simple_segm_substr
+from eallmancy.analysis.analyzer.tokenstr_handling import _linenums_idx, _find_linenum, _get_line, _token_rawline
+from functools import partial
 
 
 def _jsonify_segms(segm_ls, t_idx, tcmp, trace):
     _program_str = trace[t_idx].program
     _linenums = _linenums_idx(_program_str)
-    get_idx_linenum = lambda idx: max([k for k,v in _linenums.items() if v <= idx])+1
+    get_idx_linenum = partial(_find_linenum, linenums=_linenums)
     program_str = grab_programbody(_program_str)
-    bdy_idx = _program_str.find(program_str)
-    bdy_offset_lines = get_idx_linenum(bdy_idx)+1
+    bdy_offset_lines = _find_linenum(_program_str.find('def '), linenums=_linenums)
     tkn_list = tcmp['submissions'][t_idx]['tokenList']
 
     json_ls = []
     for s_entry in segm_ls:
         st_tkn, en_tkn = s_entry.start_token, s_entry.end_token
-        st_tkn_linestart, en_tkn_lineend = _find_token_line_indices(program_str, st_tkn, en_tkn, tkn_list)
-        nx_tkn_linestart = _find_line_stidx(program_str, tkn_list[min(en_tkn+1, len(tkn_list)-1)]['line']-1)
-        treated_tkn_end = max(en_tkn_lineend,nx_tkn_linestart)
+        st_tkn_line, en_tkn_line = _token_rawline(st_tkn, tkn_list), _token_rawline(en_tkn, tkn_list)
 
-        json_ls.append({'start_line': get_idx_linenum(st_tkn_linestart)+bdy_offset_lines, 'end_line': get_idx_linenum(treated_tkn_end)+bdy_offset_lines})
+        json_ls.append({
+            'start_line': st_tkn_line+bdy_offset_lines,
+            'end_line': en_tkn_line+bdy_offset_lines
+        })
     return json_ls
+
+
 
 def _jsonify_segm_templ(templ, tcmp, trace):
     _json = {

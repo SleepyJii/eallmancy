@@ -1,4 +1,8 @@
 
+
+from functools import partial
+
+
 def find_nth(haystack: str, needle: str, n: int) -> int:
     start = 0
     while start >= 0 and n >= 1:
@@ -87,7 +91,7 @@ def _find_programbody_start(prog):
 def grab_programbody(prog):
     return prog[_find_programbody_start(prog):]
 
-def simple_segm_substr(trace, s_entry, tcmp):
+def simple_segm_substr_OLD(trace, s_entry, tcmp):
     program_str = grab_programbody(trace[s_entry.soln_id].program)
     st_tkn, en_tkn = s_entry.start_token, s_entry.end_token
     tkn_list = tcmp['submissions'][s_entry.soln_id]['tokenList']
@@ -144,4 +148,53 @@ def simple_segm_substr(trace, s_entry, tcmp):
 #         #     print_atom
 #         #     s_entry.text = text
 
-    
+
+
+def _linenums_idx(prg):
+    _nums = {0: -1}
+    last = -1  # keeping this always ON \n... for first line this sucks, but whatever
+    last_idx = 0
+    while last+1 < len(prg):
+        nxt = prg[last+1:].find('\n')
+        if nxt == -1:
+            break
+        else:
+            nxt += 1 # want just after the \n
+        _nums[last_idx+1] = last + nxt
+        last_idx += 1
+        last = last + nxt
+    return _nums
+
+def _find_linenum(chidx, linenums=None, prg_str=None):
+    if linenums is None:
+        linenums = _linenums_idx(prg_str)
+        
+    return max([k for k,v in linenums.items() if v <= chidx])
+
+def _get_line(prg_str, line_idx, line_strs=None):
+    if line_strs is None:
+        line_strs = prg_str.split('\n')
+    return line_strs[line_idx]
+
+def _token_rawline(tokennum, tokenlist):
+    res = tokenlist[tokennum]['line']
+    if res == -1:
+        return max([tt['line'] for tt in tokenlist])
+    return res
+
+
+
+def simple_segm_substr(trace, s_entry, tcmp):
+    _program_str = trace[s_entry.soln_id].program
+    _progrm_lines = _program_str.split('\n')
+    _linenums = _linenums_idx(_program_str)
+    bdy_offset_lines = _find_linenum(_program_str.find('def '), linenums=_linenums)
+    tkn_list = tcmp['submissions'][s_entry.soln_id]['tokenList']
+
+    st_tkn, en_tkn = s_entry.start_token, s_entry.end_token
+    st_tkn_line, en_tkn_line = _token_rawline(st_tkn, tkn_list), _token_rawline(en_tkn, tkn_list)
+    return '\n'.join([
+        _get_line(_program_str, li+bdy_offset_lines, line_strs=_progrm_lines)
+        for li in range(st_tkn_line, en_tkn_line+1)
+    ])
+

@@ -5,7 +5,7 @@ import itertools
 from eallmancy.artifacts.artifact import Artifact
 from eallmancy.evaluation.evaluation import Evaluation
 from eallmancy.analysis.analysis_cache import AnalysisCache
-# from eallmancy.analysis.trace_analysis import TraceAnalysis
+from eallmancy_gui.gui_handler import GUIHandler
 from dataclasses import dataclass
 from typing import Dict, List
 from pathlib import Path
@@ -38,7 +38,10 @@ class EngineTrace:
         self.lock = Lock()
 
         self.analysis_cache = AnalysisCache()
-        # self.trace_analysis = None if not trace_analysis else TraceAnalysis(ps=self.problem_spec, **kwargs)
+        self.gui_handler = GUIHandler(snapshot=self._return_self)
+
+    def _return_self(self):
+        return self
 
     @property
     def graph(self):

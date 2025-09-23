@@ -5,8 +5,6 @@ from dataclasses import dataclass, field
 from eallmancy.analysis.analyzer.utils import get_openai_embeddings
 from eallmancy.analysis.analyzer.atomization.solution_segment import SolutionSegment
 from eallmancy.analysis.analyzer.utils import cosine_sim
-from eallmancy.analysis.trace_analysis.segm_printing import _find_token_line_nums, _find_token_line_indices, simple_atom_substrs
-
 
 
 @dataclass
@@ -66,48 +64,6 @@ class MatchAtom:
         self.description = sstr
         return self
     
-    # def update_cache(self, **kwargs):
-    #     self.cache.update(**kwargs)
-    #     return self
-    
-    # @property
-    # def embedding(self):
-    #     if 'embedding' not in self.cache.keys():
-    #         ttt = {
-    #             k: v
-    #             for k,v in simple_atom_substrs(self, ttrace, tcmp).items()
-    #         }
-    #         ttk = list(ttt.keys())
-    #         ttv = [ttt[k] for k in ttk]
-    #         tte = get_openai_embeddings(ttv, cached_embeddings=cached_embeddings)
-    #         pass
-    #     return self.cache['embedding']
-
-
-
-    # def filter_embedding_similarity(self, persp_id: int, ttrace, tcmp, cutoff=0.95, timeout=60, cached_embeddings=dict()):
-        
-    #     ttt = {
-    #         k: v
-    #         for k,v in simple_atom_substrs(self, ttrace, tcmp).items()
-    #     }
-    #     ttk = list(ttt.keys())
-    #     ttv = [ttt[k] for k in ttk]
-    #     tte = get_openai_embeddings(ttv, cached_embeddings=cached_embeddings)
-    #     ttt = {k: e for k, e in zip(ttk, tte)}
-        
-    #     refiltered_solns = []
-    #     for k in ttt.keys():
-    #         if ttt[persp_id].shape != ttt[k].shape:
-    #             continue
-    #         if cosine_sim(ttt[persp_id], ttt[k]) < cutoff:
-    #             continue
-    #         else:
-    #             refiltered_solns.append(k)
-        
-    #     return self.filter_solutions(refiltered_solns).update_cache(embedding=sum(ttt[tk] for tk in refiltered_solns) / len(refiltered_solns))
-
-
 
     def add(self, segment):
         ex = self.get(segment.soln_id)
@@ -125,65 +81,6 @@ class MatchAtom:
         self.entries = list(set(self.entries))
         return self
     
-    # def accrete(self, atm):
-    #     # want to combine segments per origin soln
-    #     my_solns = self.solution_members()
-    #     other_solns = atm.solution_members()
-    #     overlap_solns = set(my_solns).intersection(other_solns)
-    #     # new_entries = [e for e in self.entries if e.soln_id in my_solns and e.soln_id not in overlap_solns]
-    #     # new_entries.extend([e for e in atm.entries if e.soln_id in other_solns and e.soln_id not in my_solns])
-    #     new_entries = []
-    #     for s in overlap_solns:
-    #         # confirm that relevant entries are overlapping, or raise
-    #         my_seg: SolutionSegment = self.get(s)
-    #         ot_seg: SolutionSegment = atm.get(s)
-    #         if my_seg.start_token > ot_seg.end_token or my_seg.end_token < ot_seg.start_token:
-    #             raise Exception("attempting to accrete disjoint atoms")
-    #         new_seg = (
-    #             # extended segment
-    #             SolutionSegment(
-    #                 s,
-    #                 my_seg.soln_length,
-    #                 min(my_seg.start_token, ot_seg.start_token),
-    #                 max(my_seg.end_token, ot_seg.end_token),
-    #                 my_seg.original_segid or ot_seg.original_segid
-    #             )
-    #         )
-    #         if my_seg.start_line is not None and ot_seg.start_line is not None:
-    #             new_seg.start_line = min(my_seg.start_line, ot_seg.start_line)
-    #         if my_seg.end_line is not None and ot_seg.end_line is not None:
-    #             new_seg.end_line = max(my_seg.end_line, ot_seg.end_line)
-    #         new_entries.append(new_seg)
-        
-    #     # calculate how to adjust non-overlapping segments
-    #     ot_st_adj, ot_en_adj = (ot_seg.start_token - new_seg.start_token, new_seg.end_token - ot_seg.end_token)
-    #     my_st_adj, my_en_adj = (my_seg.start_token - new_seg.start_token, new_seg.end_token - my_seg.end_token)
-
-    #     for s in other_solns.difference(overlap_solns):
-    #         ot_atm = atm.get(s)
-    #         new_entries.append(
-    #             ot_atm.copy()
-    #             .set_start_token(ot_atm.start_token-ot_st_adj)
-    #             .set_end_token(ot_atm.end_token + ot_en_adj)
-    #         )
-    #     for s in my_solns.difference(overlap_solns):
-    #         my_atm = self.get(s)
-    #         new_entries.append(
-    #             my_atm.copy()
-    #             .set_start_token(my_atm.start_token-my_st_adj)
-    #             .set_end_token(my_atm.end_token + my_en_adj)
-    #         )
-    #     # ot_seg.start - ot_st_adj, ot_seg.end + ot_en_adj
-            
-    #     res = MatchAtom(new_entries, '\n'.join([dsc for dsc in [self.description, atm.description] if dsc is not None]) or None)
-
-    #     # special condition for cache
-    #     if 'embedding' in self.cache.keys() and 'embedding' in atm.cache.keys():
-    #         res = res.update_cache(embedding=(self.cache['embedding']*len(self.entries) + atm.cache['embedding']*len(atm.entries))/(len(self.entries)+len(atm.entries)))
-        
-
-
-    #     return res
 
     def set(self, perspective_id: int, start_token: Optional[int] = None, end_token: Optional[int] = None):
         perspective_segment = self.get(perspective_id)
@@ -213,27 +110,6 @@ class MatchAtom:
             # cache=dict() if reset_cache else self.cache.copy()
         )
     
-    # def update_metadata(self, trace, tcmp):
-    #     for m in self.entries:
-    #         if m.soln_id == -1:
-    #             continue
-    #     return self.update_line_numbers(trace, tcmp)
-    
-    # def update_line_numbers(self, trace, tcmp):
-    #     entries = []
-    #     for m in self.entries:
-    #         if m.soln_id == -1: continue
-    #         stl, enl = _find_token_line_nums(
-    #             trace[m.soln_id].program,
-    #             m.start_token, m.end_token,
-    #             tcmp['submissions'][m.soln_id]['tokenList'],
-    #         )
-    #         m.start_line = stl
-    #         m.end_line = enl
-    #         entries.append(m)
-    #     self.entries = entries
-    #     return self
-
     @property
     def length(self):
         if self.is_empty:

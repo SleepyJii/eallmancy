@@ -13,11 +13,10 @@ import signal
 import datetime
 
 # UGH
-# from tracegui.backend.eallmancer_v2 import Eallmancer
-from tracegui.backend.websocket_manager import ConnectionManager
-from tracegui.backend.msg_worker import msg_worker, _get_timestamps
-from tracegui.backend_utils import _add_graph_positioning, _add_fitness_rank, _jsonify_art, _jsonify_edge
-from tracegui.backend_utils import _build_templ_lookup, _jsonify_segm_templ
+from eallmancy_gui.backend.websocket_manager import ConnectionManager
+from eallmancy_gui.backend.msg_worker import msg_worker, _get_timestamps
+from eallmancy_gui.backend_utils import _add_graph_positioning, _add_fitness_rank, _jsonify_art, _jsonify_edge
+from eallmancy_gui.backend_utils import _build_templ_lookup, _jsonify_segm_templ
 
 
 
