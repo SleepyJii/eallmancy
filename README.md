@@ -2,7 +2,7 @@
 
 **A practical framework for code generation using Evolutionary Algorithms + Large Language Models (EALLMs).**
 
-Developed for my MSc dissertation — *"eaLLMancy: Practical Frameworks for Code Generation using Evolutionary Algorithms and Large Language Models"* — Department of Computing, Imperial College London, 2025.
+Developed for a MSc dissertation — *"eaLLMancy: Practical Frameworks for Code Generation using Evolutionary Algorithms and Large Language Models"* — Department of Computing, Imperial College London, 2025.
 
 ## Overview
 
@@ -12,11 +12,10 @@ Recent years have produced a wave of evolutionary algorithms that use LLMs as a 
 
 ![Framework architecture](docs/images/framework_architecture.jpg)
 
-Key results from the dissertation:
+Key features from the dissertation:
 
-- **~4× reduction in lines of code** when re-implementing state-of-the-art EALLM algorithms (FunSearch, EoH, ReEvo) on top of the framework — see [`algorithms/`](algorithms/) vs. the original reference implementations in [`algorithms/benchmark/`](algorithms/benchmark/).
 - **A built-in web GUI** for monitoring live EALLM runs: heritage-graph visualisation, per-node code inspection, and run configuration — provided "for free" by the framework's trace abstraction.
-- **Novel interpretability methods** using open-source plagiarism-detection tooling ([JPlag](https://github.com/jplag/JPlag)) to measure code similarity between evolved programs, characterise population diversity, and identify *heritable code snippets* that propagate through the evolutionary run.
+- **native interpretability methods** using open-source plagiarism-detection tooling ([JPlag](https://github.com/jplag/JPlag)) to measure program similarities during evolution, characterise population diversity, and identify *heritable code snippets* that propagate through the evolutionary run.
 
 ### Live trace GUI
 
