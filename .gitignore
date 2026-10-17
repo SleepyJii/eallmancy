@@ -1,14 +1,23 @@
+# environments & caches
 venv
-data
-cobench
 **/__pycache__/
 **/node_modules/
+.ipynb_checkpoints/
+*.swp
+
+# data & run outputs
+data
+cobench
+workkit
+experiments/eallm_traces
 .jplag_inp
 .jplag_otp
 *.jplag
 *.pk
-.ipynb_checkpoints/
-experiments/.ipynb_checkpoints/atomization-checkpoint.py experiments/.ipynb_checkpoints/greedy_salidea-checkpoint.py experiments/.ipynb_checkpoints/jplag-checkpoint.ipynb experiments/.ipynb_checkpoints/proto0-checkpoint.ipynb experiments/.ipynb_checkpoints/segm_printing-checkpoint.py experiments/.ipynb_checkpoints/seoh_analysis-checkpoint.ipynb experiments/.ipynb_checkpoints/seoh_sims-checkpoint.ipynb
-eallmancy/__pycache__/
-workkit
-experiments/eallm_traces
+
+# large external binaries (see README for JPlag setup)
+experiments/jplag/jplag.jar
+
+# local tooling & private source docs
+.mcp.json
+writeup/
