@@ -1,3 +1,4 @@
+import math
 import requests
 from eallmancy.analysis.utils import ancestor_mapdists, latest_common_ancestor, heritage_distance, heritage_distances
 import jplag
@@ -71,7 +72,6 @@ def build_analysis(ttrace):
     # JPLAG
     (_, _, jplag_dict), _, _ = calc_jplag_distances(ttrace, verbose=True)
     jplag_distances = np.zeros((len(ttrace.list),len(ttrace.list)))
-    jplag_distances = jplag_matrix
     for (a,b), dd in jplag_dict.items():
         d = dd['avg']
         if math.isinf(d):

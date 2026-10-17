@@ -161,7 +161,7 @@ if __name__=="__main__":
 
     soln = funsearch(
         n_isles=2,
-        max_time=60,
+        max_samples=60,
         problem_spec=ProblemSpec(
             description="Generate a random number (integer) from some random seed (int)",
             template="""def random_num(inp: int) -> int:\n\tpass""",

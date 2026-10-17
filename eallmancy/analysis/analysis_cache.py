@@ -16,19 +16,21 @@ class AnalysisCache:
     def empty(self):
         return (self.pairwise is None) and (self.segment is None)
 
-    def load(self, pth: str, name: List[str]=None):
-        if name.lower() == 'pairwise':
+    def load(self, pth: str, name: str=None):
+        if name is None:
             with open(pth, 'rb') as f:
-                self.pairwise = pk.load(f)
-        elif name.lower() == 'segment':
-            with open(pth, 'rb') as f:
-                self.segment = pk.load(f)
-        elif name is None:
+                obj = pk.load(f)
             if type(obj) is AnalysisCache:
                 self.pairwise = obj.pairwise
                 self.segment = obj.segment
             else:
                 raise Exception(f'could not load type `{type(obj)}` into AnalysisCache')
+        elif name.lower() == 'pairwise':
+            with open(pth, 'rb') as f:
+                self.pairwise = pk.load(f)
+        elif name.lower() == 'segment':
+            with open(pth, 'rb') as f:
+                self.segment = pk.load(f)
         else:
             raise Exception(f'unknown analysis type name `{name}`')
         return self

@@ -14,6 +14,13 @@ from experiments.scievo.operations.utils import _children, _parents, _fitnessran
 
 
 
+
+def _solutions_block(parents):
+    return '\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parents)])
+
+def _code_blocks(parts):
+    return '\n\n'.join([f'```\n{x}\n```' for x in parts])
+
 class RepairOperation(Operation):
     async def select_parents(self, pop: Population):
         async with pop.lock:
@@ -63,7 +70,7 @@ Algorithm: {parent_soln.thought}
 {parent_soln.program}
 
 Which is meant to match the following template
-{'\n\n'.join([f'```\n{x}\n```' for x in [self.engine._problem_spec.template]])}
+{_code_blocks([self.engine._problem_spec.template])}
 
 But is currently throwing an Evaluation error:
 Evaluation: {parent_soln.evaluation if parent_soln.evaluation is not None else 'None'}

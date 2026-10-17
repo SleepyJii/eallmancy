@@ -1,4 +1,5 @@
 
+import pickle as pk
 from abc import ABC, abstractmethod
 
 import requests
@@ -298,7 +299,7 @@ class SegmentTraceAnalysis:
         try:
             pickleable_repr = (self._trace, self._tcmp, self._invalid_solns, self.verbose, self._atoms, self.templates, self.soln_templates)
             with open(path, 'wb') as f:
-                pk.dump(path, f)
+                pk.dump(pickleable_repr, f)
         except Exception as e:
             print(f'Failed to save SegmentAnalysis, {e}')
         self._trace.lock = _lk

@@ -15,6 +15,13 @@ from eallmancy.analysis.trace_analysis.idea_distillation import DistilledIdea
 
 
 
+
+def _solutions_block(parents):
+    return '\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parents)])
+
+def _code_blocks(parts):
+    return '\n\n'.join([f'```\n{x}\n```' for x in parts])
+
 class IdeateDivergentOperation(Operation):
     async def select_parents(self, pop: Population):
         async with pop.lock:
@@ -43,7 +50,7 @@ We want to explore new implementation approaches, and would like you to innovate
 
 1. First, describe your new solution and its contents in one concise paragraph boxed in <<>> (paragraph starts with <<, ends with >>).
 2. Next, implement the solution accordingly while following the template below:
-{'\n\n'.join([f'```\n{x}\n```' for x in [self.engine._problem_spec.template]])}
+{_code_blocks([self.engine._problem_spec.template])}
 
 Provide your implementation within a single solution block.
 Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solution description or anything else. Do not give additional explanations.'''

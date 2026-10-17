@@ -14,6 +14,13 @@ from experiments.scievo2.operations.utils import _children, _parents, _fitnessra
 
 
 
+
+def _solutions_block(parents):
+    return '\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parents)])
+
+def _code_blocks(parts):
+    return '\n\n'.join([f'```\n{x}\n```' for x in parts])
+
 class RefineOperation(Operation):
 
     async def select_parents(self, pop: Population):
@@ -44,14 +51,14 @@ class RefineOperation(Operation):
     def build_prompt(self, *parents: List[Artifact]):
         return f'''{self.engine._problem_spec.description}
 I have {len(parents)} existing solutions with their contents as follows:
-{'\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parents)])}
+{_solutions_block(parents)}
 
 Please help me create a new implementation that is inspired by but distinct from the existing solutions.
 Try to improve and innovate on the approaches taken in them that seem successful.
 
 1. First, describe your new solution and its contents in one concise paragraph boxed in <<>> (paragraph starts with <<, ends with >>).
 2. Next, implement the solution accordingly while following the template below:
-{'\n\n'.join([f'```\n{x}\n```' for x in [self.engine._problem_spec.template]])}
+{_code_blocks([self.engine._problem_spec.template])}
 
 Provide your implementation with the *same* number of content blocks as the previous solution ({1} blocks).
 Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solution description or anything else. Do not give additional explanations.'''

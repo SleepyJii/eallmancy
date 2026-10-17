@@ -194,7 +194,7 @@ class Analyzer:
         self._trace = trace
 
     def distance(self, *args, **kwargs):
-        return PairwiseTraceAnalysis(ps, self._tcmp, invalid_solns=self._invalid_solns).distance(*args, **kwargs)
+        return PairwiseTraceAnalysis(self._trace.problem_spec, self._tcmp, invalid_solns=self._invalid_solns).distance(*args, **kwargs)
     
     def cluster_analysis(self, cluster_traceids):
         return ClusterTraceAnalysis(cluster_traceids, trace=self._trace, tcmp=self._tcmp, invalid_solns=self._invalid_solns)

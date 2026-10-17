@@ -18,10 +18,11 @@ class ThoughtfulSolution(SinglePartSolution):
     def __str__(self):
         parstr = Artifact.__str__(self)
         header_str, eval_str = parstr.split('\n')
+        body = '\n\n'.join([f'```\n{x}\n```' for x in self.solution_part_strs])
         return f"""
 {header_str}
 Algorithm: {self.thought}
-{'\n\n'.join([f'```\n{x}\n```' for x in self.solution_part_strs])}
+{body}
 {eval_str}
 """
 

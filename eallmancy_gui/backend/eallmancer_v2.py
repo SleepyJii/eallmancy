@@ -1,5 +1,6 @@
 
 from typing import Optional
+from pydantic import BaseModel
 import os
 # from base.config import Config
 from eallmancy.engine.engine_trace import EngineTrace

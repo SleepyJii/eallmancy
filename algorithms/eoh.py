@@ -32,18 +32,22 @@ class ThoughtfulSolution(SinglePartSolution):
     def __str__(self):
         parstr = Artifact.__str__(self)
         header_str, eval_str = parstr.split('\n')
+        body = '\n'.join(self.solution_part_strs)
         return f"""
 {header_str}
 
 {self.thought}
 
 ```python
-{'\n'.join(self.solution_part_strs)}
+{body}
 ```
 {eval_str}
 """
-       
+
 # prompt_to_thoughtful_solution = engine.prompt_to_solution.artifact(ThoughtfulSolution)
+
+def _solutions_block(parent_solns):
+    return '\n'.join([f'Solution num {i}:\n{ss.program}\n' for i, ss in enumerate(parent_solns)])
 
 def i1_solution():
     prmpt = f'''{engine._problem_spec.description}
@@ -56,7 +60,7 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
 def e1_solution(*parent_solns):
     prmpt = f'''{engine._problem_spec.description}
 I have {len(parent_solns)} existing algorithms with their codes as follows:
-{'\n'.join([f'Solution num {i}:\n{ss.program}\n' for i, ss in enumerate(parent_solns)])}
+{_solutions_block(parent_solns)}
 Please help me create a new algorithm that has a totally different form from the given ones. 
 1. First, describe your new algorithm and main steps in one sentence. The description must be inside within boxed <<>>.
 2. Next, implement the following Python function:
@@ -67,7 +71,7 @@ Enclose within a code block like ```python ... ```. Do not give additional expla
 def e2_solution(*parent_solns):
     prmpt = f'''{engine._problem_spec.description}
 I have {len(parent_solns)} existing algorithms with their codes as follows:
-{'\n'.join([f'Solution num {i}:\n{ss.program}\n' for i, ss in enumerate(parent_solns)])}
+{_solutions_block(parent_solns)}
 Please help me create a new algorithm that has a totally different form from the given ones but can be motivated from them.
 1. Firstly, identify the common backbone idea in the provided algorithms. 
 2. Secondly, based on the backbone idea describe your new algorithm in one sentence. The description must be inside within boxed <<>>.

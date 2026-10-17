@@ -35,13 +35,14 @@ class ThoughtfulSolution(SinglePartSolution):
     def __str__(self):
         parstr = Artifact.__str__(self)
         header_str, eval_str = parstr.split('\n')
+        body = '\n'.join(self.solution_part_strs)
         return f"""
 {header_str}
 
 {self.thought}
 
 ```python
-{'\n'.join(self.solution_part_strs)}
+{body}
 ```
 {eval_str}
 """
@@ -63,16 +64,18 @@ class Prompts:
 
 
     def e1_solution(self, *parents: List[Artifact]):
+        solutions_block = '\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parents)])
+        template_block = '\n\n'.join([f'```\n{x}\n```' for x in [self.engine._problem_spec.template]])
         prmpt = f'''{self.engine._problem_spec.description}
     I have {len(parents)} existing solutions with their contents as follows:
-    {'\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parents)])}
+    {solutions_block}
 
     Please help me create a new implementation that is inspired by but distinct from the existing solutions.
     Try to improve and innovate on the approaches taken in them that seem successful.
 
     1. First, describe your new solution and its contents in one concise paragraph boxed in <<>> (paragraph starts with <<, ends with >>).
     2. Next, implement the solution accordingly while following the template below:
-    {'\n\n'.join([f'```\n{x}\n```' for x in [self.engine._problem_spec.template]])}
+    {template_block}
 
     Provide your implementation with the *same* number of content blocks as the previous solution ({1} blocks).
     Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solution description or anything else. Do not give additional explanations.'''

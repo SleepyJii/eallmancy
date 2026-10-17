@@ -70,18 +70,18 @@ class MatchAtom:
         self.cache.update(**kwargs)
         return self
     
-    @property
-    def embedding(self):
-        if 'embedding' not in self.cache.keys():
-            ttt = {
-                k: v
-                for k,v in simple_atom_substrs(self, ttrace, tcmp).items()
-            }
-            ttk = list(ttt.keys())
-            ttv = [ttt[k] for k in ttk]
-            tte = get_openai_embeddings(ttv, cached_embeddings=cached_embeddings)
-            pass
-        return self.cache['embedding']
+    # @property
+    # def embedding(self):
+    #     if 'embedding' not in self.cache.keys():
+    #         ttt = {
+    #             k: v
+    #             for k,v in simple_atom_substrs(self, ttrace, tcmp).items()
+    #         }
+    #         ttk = list(ttt.keys())
+    #         ttv = [ttt[k] for k in ttk]
+    #         tte = get_openai_embeddings(ttv, cached_embeddings=cached_embeddings)
+    #         pass
+    #     return self.cache['embedding']
 
 
 

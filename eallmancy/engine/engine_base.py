@@ -1,4 +1,9 @@
 
+from typing import List
+
+from eallmancy.artifacts.artifact import Artifact
+from eallmancy.engine.problem_spec import ProblemSpec
+
 
 class EngineBase:
     def __init__(self, api_spec=None, problem_spec: ProblemSpec=None, tracing=True, debug=False, **kwargs):

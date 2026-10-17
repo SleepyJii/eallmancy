@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
-from eallmancy.sampling import SampleTrimmer, TextFunctionProgramConverter, Program, Function
+from eallmancy.sampling import SampleTrimmer, TextFunctionProgramConverter, Program, Function, HttpsApi
 from eallmancy.engine.problem_spec import ProblemSpec
 
 import re

@@ -32,10 +32,11 @@ class SinglePartSolution(MultiPartSolution):
     def __str__(self):
         parstr = super().__str__()
         header_str, eval_str = parstr.split('\n')
+        body = '\n'.join(self.solution_part_strs)
         return f"""
 {header_str}
 ```
-{'\n'.join(self.solution_part_strs)}
+{body}
 ```
 {eval_str}
 """

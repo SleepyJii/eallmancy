@@ -20,6 +20,13 @@ import asyncio
 
 # EOH_git artifacts
 
+def _code_blocks(parts):
+    return '\n\n'.join([f'```\n{x}\n```' for x in parts])
+
+def _solutions_block(parent_solns):
+    return '\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parent_solns)])
+
+
 class ThoughtfulDiffSolution(DiffSolution):
     def __init__(self, response: str, *args, **kwargs):
         super().__init__(response, *args, **kwargs)
@@ -30,7 +37,7 @@ class ThoughtfulDiffSolution(DiffSolution):
         header_str, eval_str = parstr.split('\n')
         return f"""
 Algorithm: {self.thought}
-{'\n\n'.join([f'```\n{x}\n```' for x in self.solution_part_strs])}
+{_code_blocks(self.solution_part_strs)}
 {eval_str}
 """
 
@@ -44,7 +51,7 @@ class ThoughtfulSolution(MultiPartSolution):
         header_str, eval_str = parstr.split('\n')
         return f"""
 Algorithm: {self.thought}
-{'\n\n'.join([f'```\n{x}\n```' for x in self.solution_part_strs])}
+{_code_blocks(self.solution_part_strs)}
 {eval_str}
 """
 
@@ -55,7 +62,7 @@ async def i1_solution(engine: EngineV3):
     prmpt = f'''{engine._problem_spec.description}
 1. First, describe your new solution and main steps in one sentence. The description must be inside within boxed <<>>. 
 2. Next, improve on the following solution containing the following sections:
-{'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
+{_code_blocks(engine._problem_spec.section_templates)}
 Provide your implementation with the *same* number of content blocks as the previous solution ({len(engine._problem_spec.section_templates)} blocks).
 Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solution description or anything else. Do not give additional explanations.'''
     return await engine.async_generate_artifact(prmpt, ThoughtfulSolution)
@@ -64,11 +71,11 @@ Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solu
 async def e1_solution(engine: EngineV3, *parent_solns):
     prmpt = f'''{engine._problem_spec.description}
 I have {len(parent_solns)} existing solutions with their contents as follows:
-{'\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parent_solns)])}
+{_solutions_block(parent_solns)}
 Please help me create a new solution that is totally different from the given ones. 
 1. First, describe your new solution and its contents in one sentence. The description must be inside within boxed <<>>.
 2. Next, improve on the following solution containing the following sections:
-{'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
+{_code_blocks(engine._problem_spec.section_templates)}
 Provide your implementation with the *same* number of content blocks as the previous solution ({len(engine._problem_spec.section_templates)} blocks).
 Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solution description or anything else. Do not give additional explanations.'''
     return await engine.async_generate_artifact(prmpt, ThoughtfulSolution, parents=parent_solns)
@@ -77,12 +84,12 @@ Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solu
 async def e2_solution(engine: EngineV3, *parent_solns):
     prmpt = f'''{engine._problem_spec.description}
 I have {len(parent_solns)} existing solutions with their contents as follows:
-{'\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parent_solns)])}
+{_solutions_block(parent_solns)}
 Please help me create a new solution that is totally different from the given ones but can be motivated from them.
 1. Firstly, identify the common backbone idea in the provided solutions. 
 2. Secondly, based on the backbone idea describe your new solution in one sentence. The description must be inside within boxed <<>>.
 2. Thirdly, improve on the following solution containing the following sections:
-{'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
+{_code_blocks(engine._problem_spec.section_templates)}
 Provide your implementation with the *same* number of content blocks as the previous solution ({len(engine._problem_spec.section_templates)} blocks).
 Wrap the content blocks of the solution in ``` ... ```, but do not wrap the solution description or anything else. Do not give additional explanations.'''
     return await engine.async_generate_artifact(prmpt, ThoughtfulSolution, parents=parent_solns)

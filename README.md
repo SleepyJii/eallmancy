@@ -46,6 +46,6 @@ This is research code, archived roughly as it was at submission. To run it:
 
 1. Create the environment: `./make_env.sh` (Python venv + `requirements.txt`).
 2. Provide an OpenAI-compatible API key via the `OPENAI_API_KEY` environment variable.
-3. The top-level `llm4ad` and `reevo` symlinks point to locally modified checkouts of [LLM4AD](https://github.com/Optima-CityU/llm4ad) and [ReEvo](https://github.com/ai4co/reevo), expected as sibling directories (`../llm4ad_mod`, `../reevo_mod`). They are only needed for the benchmark comparisons in `problems/` and `algorithms/benchmark/`.
+3. The top-level `llm4ad` and `reevo` symlinks point to locally modified checkouts of [LLM4AD](https://github.com/Optima-CityU/llm4ad) and [ReEvo](https://github.com/ai4co/reevo), expected as sibling directories (`../llm4ad_mod`, `../reevo_mod`). `llm4ad` is required even for the core framework (`eallmancy.sampling` reuses its LLM API helpers); `reevo` is only needed for the benchmark comparisons in `problems/` and `algorithms/benchmark/`.
 4. The plagiarism-detection analysis requires the [JPlag](https://github.com/jplag/JPlag/releases) jar (not tracked due to size) placed at `experiments/jplag/jplag.jar`.
 5. The GUI frontend builds with `npm run build` in `eallmancy_gui/frontend/`; the backend is served from a notebook or script via `eallmancy_gui/gui_handler.py`.

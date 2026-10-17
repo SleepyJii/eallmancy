@@ -189,7 +189,7 @@ class EngineV3:
                         # because we are in async mode, assuming async hooks
                         await hook(arte, self.trace)
                     else:
-                        hooK(arte, self.trace)
+                        hook(arte, self.trace)
 
 
     def build_artifact(self, prompt: str, arte_class, parents: List[Artifact] = [], register=True, **kwargs):

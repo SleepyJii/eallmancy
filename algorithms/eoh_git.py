@@ -22,6 +22,12 @@ engine = EngineV3(
 )
 
 
+def _code_blocks(parts):
+    return '\n\n'.join([f'```\n{x}\n```' for x in parts])
+
+def _solutions_block(parent_solns):
+    return '\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parent_solns)])
+
 
 class ThoughtfulDiffSolution(DiffSolution):
     def __init__(self, response: str, *args, **kwargs):
@@ -34,7 +40,7 @@ class ThoughtfulDiffSolution(DiffSolution):
         header_str, eval_str = parstr.split('\n')
         return f"""
 Algorithm: {self.thought}
-{'\n\n'.join([f'```\n{x}\n```' for x in self.solution_part_strs])}
+{_code_blocks(self.solution_part_strs)}
 {eval_str}
 """
 
@@ -51,7 +57,7 @@ class ThoughtfulSolution(MultiPartSolution):
         header_str, eval_str = parstr.split('\n')
         return f"""
 Algorithm: {self.thought}
-{'\n\n'.join([f'```\n{x}\n```' for x in self.solution_part_strs])}
+{_code_blocks(self.solution_part_strs)}
 {eval_str}
 """
     
@@ -66,7 +72,7 @@ def i1_solution():
     prmpt = f'''{engine._problem_spec.description}
 1. First, describe your new algorithm and main steps in one sentence. The description must be inside within boxed <<>>. 
 2. Next, improve on the following sections of code:
-{'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
+{_code_blocks(engine._problem_spec.section_templates)}
 Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
 Remember to include appropriate indentations in both SEARCH and REPLACE blocks. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulDiffSolution)
@@ -75,11 +81,11 @@ Remember to include appropriate indentations in both SEARCH and REPLACE blocks. 
 def e1_solution(*parent_solns):
     prmpt = f'''{engine._problem_spec.description}
 I have {len(parent_solns)} existing solutions with their contents as follows:
-{'\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parent_solns)])}
+{_solutions_block(parent_solns)}
 Please help me create a new solution that is totally different from the given ones. 
 1. First, describe your new solution and its contents in one sentence. The description must be inside within boxed <<>>.
 2. Next, improve on the following sections of code:
-{'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
+{_code_blocks(engine._problem_spec.section_templates)}
 Provide your implementation in matching code blocks, each marked like ``` ... ```. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulSolution, parents=parent_solns)
 
@@ -87,12 +93,12 @@ Provide your implementation in matching code blocks, each marked like ``` ... ``
 def e2_solution(*parent_solns):
     prmpt = f'''{engine._problem_spec.description}
 I have {len(parent_solns)} existing solutions with their contents as follows:
-{'\n'.join([f'Solution num {i}:\n{ss}\n' for i, ss in enumerate(parent_solns)])}
+{_solutions_block(parent_solns)}
 Please help me create a new solution that is totally different from the given ones but can be motivated from them.
 1. Firstly, identify the common backbone idea in the provided solutions. 
 2. Secondly, based on the backbone idea describe your new solution in one sentence. The description must be inside within boxed <<>>.
 3. Thirdly, improve on the following sections of code:
-{'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
+{_code_blocks(engine._problem_spec.section_templates)}
 Provide your implementation in matching code blocks, each marked like ``` ... ```. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulSolution, parents=parent_solns)
 
@@ -104,7 +110,7 @@ I have one solution with its content as follows...
 Please assist me in creating a new solution that is different but can be a modified version of the solution provided.
 1. First, describe your new solution and main steps in one sentence. The description must be inside within boxed <<>>.
 2. Next, improve on the following sections of code:
-{'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
+{_code_blocks(engine._problem_spec.section_templates)}
 Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
 Remember to include appropriate indentations in both SEARCH and REPLACE blocks. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulDiffSolution, parents=[parent_soln])
@@ -117,7 +123,7 @@ I have one solution with its code as follows...
 Please identify the main solution parameters and assist me in creating a new solution that has a different parameter settings of the score function provided.
 1. First, describe your new solution and main steps in one sentence. The description must be inside within boxed <<>>.
 2. Next, improve on the following sections of code:
-{'\n\n'.join([f'```\n{x}\n```' for x in engine._problem_spec.section_templates])}
+{_code_blocks(engine._problem_spec.section_templates)}
 Provide your improvements as a FIND-REPLACE block like \n<<<<<<<< SEARCH\ncode_to_find\n========\ncode_to_replace\n>>>>>>>> REPLACE\n
 Remember to include appropriate indentations in both SEARCH and REPLACE blocks. Do not give additional explanations.'''
     return engine.generate_artifact(prmpt, ThoughtfulDiffSolution, parents=[parent_soln])
